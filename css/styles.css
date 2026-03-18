@@ -145,6 +145,7 @@ body {
 }
 
 .user-menu-item {
+  display: block;
   width: 100%;
   border: 0;
   background: transparent;
@@ -154,6 +155,7 @@ body {
   border-radius: 8px;
   cursor: pointer;
   font: inherit;
+  text-decoration: none;
 }
 
 .user-menu-item:hover {
@@ -398,8 +400,84 @@ textarea:focus {
   color: var(--danger);
 }
 
+.role-info {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: #1e2f6f;
+}
+
+#userRoleBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(45, 154, 215, 0.16);
+  border: 1px solid rgba(45, 154, 215, 0.45);
+}
+
+.notice {
+  background: rgba(45, 154, 215, 0.14);
+  border: 1px solid rgba(45, 154, 215, 0.4);
+  color: #173f86;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 0 0 12px;
+}
+
+.action-btn {
+  width: 100%;
+  margin-top: 10px;
+}
+
 .status-card {
   margin-top: 16px;
+}
+
+.profile-container {
+  max-width: 980px;
+}
+
+.profile-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.profile-stack .card {
+  padding: 20px;
+}
+
+.profile-stack .form-grid {
+  gap: 12px;
+}
+
+.profile-stack .role-info,
+.profile-stack .notice,
+.profile-stack .form-message,
+.profile-stack .card p {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+#adminPanel .form-grid {
+  margin-top: 10px;
+}
+
+.admin-cards .admin-card {
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.admin-cards .admin-card:hover {
+  transform: translateY(-2px);
+  border-color: #5e8ed5;
+  box-shadow: 0 14px 26px rgba(14, 33, 75, 0.18);
+}
+
+.admin-panel {
+  border-left: 4px solid var(--accent);
+}
+
+.admin-create-role {
+  margin-top: 12px;
 }
 
 @media (min-width: 640px) {

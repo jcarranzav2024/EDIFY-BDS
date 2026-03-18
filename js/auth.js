@@ -43,7 +43,8 @@ if (registerForm) {
     const nombre = document.getElementById("nombre").value.trim();
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
-    const rol = document.getElementById("rol").value;
+    const selectedRol = document.getElementById("rol").value;
+    const rol = ["cliente", "contratista"].includes(selectedRol) ? selectedRol : "cliente";
 
     try {
       if (!minLength(nombre, 2)) throw new Error("Nombre invalido.");

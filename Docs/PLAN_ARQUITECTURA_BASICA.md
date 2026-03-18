@@ -3,11 +3,13 @@
 ## Objetivo
 Construir una web sencilla de contratistas con:
 - Registro e inicio de sesion
+- Perfil unico por usuario (cliente, contratista o admin)
 - Publicacion de perfiles de contratistas
 - Catalogo de trabajos anteriores por contratista
 - Reseñas y calificacion
 - Referencias de clientes por trabajo
 - Suscripciones por planes (gratis, basico, intermedio, premium)
+- Dashboard administrativo separado para gestion
 - Persistencia real en la nube sin servidor propio
 
 ## Stack tecnico
@@ -35,6 +37,7 @@ EDIFY-BDS/
   contratistas.html
   perfil.html
   resenas.html
+  admin-dashboard.html
 
   /css
     styles.css
@@ -42,7 +45,9 @@ EDIFY-BDS/
 
   /js
     app.js
+    admin.js
     auth.js
+    nav.js
     firebase-config.js
     contractors.js
     reviews.js
@@ -79,7 +84,14 @@ EDIFY-BDS/
 - Registro de suscripcion activa por usuario
 - Control de limites por plan (cantidad de trabajos en catalogo, imagenes, visibilidad)
 
-6. Persistencia
+6. Administracion (Dashboard Admin)
+- Gestion de roles (cambiar rol de usuarios)
+- Gestion de usuarios
+- Vista de planes
+- Vista de catalogo de trabajos
+- Ejecucion de seed demo
+
+7. Persistencia
 - Datos en Firestore (no localStorage como fuente principal)
 - Lectura/escritura desde navegador con SDK de Firebase
 
@@ -99,6 +111,10 @@ Documento con ID = uid de Auth
   "actualizadoEn": "serverTimestamp"
 }
 ```
+
+Notas:
+1. Los roles base son: cliente, contratista y admin.
+2. El admin designado del sistema es el correo: admin@edifybds.com.
 
 ### Coleccion: contractors
 Documento con ID = uid del contratista
@@ -193,14 +209,36 @@ Documento con ID automatico
 }
 ```
 
+### Coleccion: service_requests
+Documento con ID automatico
+```json
+{
+  "clientId": "uid_cliente",
+  "contractorId": "uid_contratista",
+  "servicioSolicitado": "Electricidad",
+  "detalle": "Instalar tomacorrientes en cocina",
+  "estado": "pendiente",
+  "createdAt": "serverTimestamp"
+}
+```
+
+### Coleccion: roles
+Documento con ID = nombre del rol
+```json
+{
+  "nombre": "supervisor",
+  "creadoEn": "serverTimestamp"
+}
+```
+
 ## Reglas basicas de seguridad (Firestore)
 1. Solo usuarios autenticados pueden escribir reseñas.
-2. Solo el dueño del perfil contratista puede editar su perfil y sus trabajos.
+2. Solo contratistas pueden editar su perfil profesional y sus trabajos.
 3. Solo clientes autenticados pueden crear referencias y reseñas.
 4. Lectura publica de perfiles, catalogo, reseñas y referencias autorizadas.
-5. Solo admin puede crear o modificar planes.
+5. Solo admin puede gestionar roles, planes y usuarios.
 
-Ejemplo inicial de reglas:
+Reglas exactas recomendadas para el estado actual del proyecto:
 ```txt
 rules_version = '2';
 service cloud.firestore {
@@ -209,37 +247,82 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isDesignatedAdminEmail() {
+      return isSignedIn() && request.auth.token.email == "admin@edifybds.com";
+    }
+
+    function userRole() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.rol
+        : "guest";
+    }
+
     function isAdmin() {
-      return isSignedIn() && request.auth.token.admin == true;
+      return isSignedIn() && (isDesignatedAdminEmail() || userRole() == "admin");
+    }
+
+    function isContractor() {
+      return userRole() == "contratista";
+    }
+
+    function isClientOrAdmin() {
+      return userRole() == "cliente" || isAdmin();
     }
 
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.auth.uid == userId;
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+
+      allow create: if isSignedIn() && request.auth.uid == userId && (
+        request.resource.data.rol in ["cliente", "contratista"] || isDesignatedAdminEmail()
+      );
+
+      allow update: if isAdmin() || (
+        isSignedIn() && request.auth.uid == userId && (
+          request.resource.data.rol in ["cliente", "contratista"] || isDesignatedAdminEmail()
+        )
+      );
+
+      allow delete: if isAdmin();
     }
 
     match /contractors/{contractorId} {
       allow read: if true;
-      allow write: if isSignedIn() && request.auth.uid == contractorId;
+
+      allow create, update, delete: if isAdmin() || (
+        isSignedIn() && request.auth.uid == contractorId && isContractor()
+      );
     }
 
     match /portfolio_jobs/{jobId} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.contractorId == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.contractorId == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.contractorId == request.auth.uid;
+
+      allow create: if isAdmin() || (
+        isSignedIn() && isContractor() && request.resource.data.contractorId == request.auth.uid
+      );
+
+      allow update, delete: if isAdmin() || (
+        isSignedIn() && isContractor() && resource.data.contractorId == request.auth.uid
+      );
     }
 
     match /reviews/{reviewId} {
       allow read: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if false;
+
+      allow create: if isSignedIn() && (
+        isAdmin() || (userRole() == "cliente" && request.resource.data.clientId == request.auth.uid)
+      );
+
+      allow update, delete: if isAdmin();
     }
 
     match /client_references/{referenceId} {
-      allow read: if resource.data.autorizadoPublicar == true;
-      allow create: if isSignedIn();
-      allow update, delete: if false;
+      allow read: if resource.data.autorizadoPublicar == true || isAdmin();
+
+      allow create: if isSignedIn() && (
+        isAdmin() || userRole() == "cliente"
+      );
+
+      allow update, delete: if isAdmin();
     }
 
     match /plans/{planId} {
@@ -248,9 +331,35 @@ service cloud.firestore {
     }
 
     match /subscriptions/{subscriptionId} {
-      allow read: if isSignedIn() && request.auth.uid == resource.data.userId;
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
-      allow update, delete: if false;
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.userId);
+
+      allow create: if isAdmin() || (
+        isSignedIn() && request.auth.uid == request.resource.data.userId && isContractor()
+      );
+
+      allow update, delete: if isAdmin();
+    }
+
+    match /service_requests/{requestId} {
+      allow create: if isSignedIn() && isClientOrAdmin() && request.resource.data.clientId == request.auth.uid;
+
+      allow read: if isAdmin() || (
+        isSignedIn() && (
+          request.auth.uid == resource.data.clientId ||
+          request.auth.uid == resource.data.contractorId
+        )
+      );
+
+      allow update: if isAdmin() || (
+        isSignedIn() && request.auth.uid == resource.data.contractorId
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    match /roles/{roleId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }
@@ -259,25 +368,34 @@ service cloud.firestore {
 ## Flujo tecnico
 1. Registro:
 - Crear usuario en Firebase Auth.
-- Guardar documento en users/{uid}.
+- Guardar documento en users/{uid} con rol cliente o contratista.
 
 2. Perfil contratista:
 - Si el rol es contratista, crear/editar contractors/{uid}.
 
-3. Catalogo de trabajos:
+3. Perfil de usuario:
+- Todo usuario ve y edita su perfil general en perfil.html.
+- El perfil profesional de contratista se habilita solo si el rol es contratista.
+
+4. Catalogo de trabajos:
 - Contratista crea trabajo en portfolio_jobs.
 - Sube imagenes a Firebase Storage y guarda URLs en el trabajo.
 - Se validan limites segun plan activo.
 
-4. Reseña y referencia:
+5. Reseña y referencia:
 - Cliente autenticado crea documento en reviews.
 - Cliente autenticado crea referencia en client_references.
 - Recalcular ratingPromedio y totalResenas del contratista.
 
-5. Suscripcion:
+6. Suscripcion:
 - Contratista selecciona plan (gratis, basico, intermedio, premium).
 - Se registra pago en pasarela y luego se guarda subscriptions.
 - La app aplica limites y beneficios del plan.
+
+7. Administracion:
+- Dashboard separado en admin-dashboard.html.
+- Admin puede gestionar roles, usuarios, planes, catalogo y seed demo.
+- El acceso al dashboard aparece en el dropdown de usuario solo para rol admin.
 
 ## Configuracion minima de Firebase en frontend
 Archivo sugerido: firebase-config.js
@@ -326,10 +444,15 @@ Semana 3
 2. Planes de suscripcion y limites por plan
 3. Reglas de seguridad basicas + despliegue en GitHub Pages
 
+Semana 4
+1. Dashboard admin separado
+2. Gestion de roles y usuarios
+3. Seed demo desde interfaz admin
+
 ## Limitaciones actuales (MVP)
-- Sin panel administrativo completo.
 - Sin chat en tiempo real.
 - Pagos en linea en fase inicial (sin facturacion avanzada).
+- El admin designado por email es una solucion practica para MVP (ideal migrar luego a custom claims con backend).
 
 ## Escalado futuro
 1. Agregar Cloud Functions para validaciones de negocio.

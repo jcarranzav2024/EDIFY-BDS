@@ -25,8 +25,25 @@
       <span></span>
     </button>
     <nav id="mainNav" class="site-nav">
+      <a href="./index.html">Inicio</a>
       <a href="./contratistas.html">Contratistas</a>
-      <a href="./perfil.html">Mi Perfil</a>
+      <div id="userMenu" class="user-menu" hidden>
+        <button
+          id="userGreeting"
+          class="nav-user user-menu-toggle"
+          type="button"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-controls="userMenuPanel"
+        ></button>
+        <div id="userMenuPanel" class="user-menu-panel" hidden>
+          <a id="userMenuProfileLink" class="user-menu-item" href="./perfil.html">Mi perfil</a>
+          <a id="userMenuAdminLink" class="user-menu-item" href="./admin-dashboard.html" hidden>Dashboard admin</a>
+          <button id="userMenuLogoutBtn" class="user-menu-item" type="button">Cerrar sesion</button>
+        </div>
+      </div>
+      <a id="loginNavLink" href="./login.html">Login</a>
+      <a id="registerNavLink" href="./registro.html" class="btn small">Registro</a>
     </nav>
   </header>
 

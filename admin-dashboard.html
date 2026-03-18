@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Admin | Edify BDS</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./index.html">
+      <img class="brand-logo" src="./img/Logo.ico.png" alt="Logo EdifyBDS" />
+      <span class="brand-name">Edify BDS</span>
+    </a>
+    <button id="menuToggle" class="menu-toggle" type="button" aria-label="Abrir menu" aria-controls="mainNav" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <nav id="mainNav" class="site-nav">
+      <a href="./index.html">Inicio</a>
+      <a href="./contratistas.html">Contratistas</a>
+      <a href="./resenas.html">Resenas</a>
+      <div id="userMenu" class="user-menu" hidden>
+        <button id="userGreeting" class="nav-user user-menu-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="userMenuPanel"></button>
+        <div id="userMenuPanel" class="user-menu-panel" hidden>
+          <a id="userMenuProfileLink" class="user-menu-item" href="./perfil.html">Mi perfil</a>
+          <a id="userMenuAdminLink" class="user-menu-item" href="./admin-dashboard.html" hidden>Dashboard admin</a>
+          <button id="userMenuLogoutBtn" class="user-menu-item" type="button">Cerrar sesion</button>
+        </div>
+      </div>
+      <a id="loginNavLink" href="./login.html">Login</a>
+      <a id="registerNavLink" href="./registro.html" class="btn small">Registro</a>
+    </nav>
+  </header>
+
+  <main class="container profile-container profile-stack">
+    <section class="card">
+      <h1>Dashboard de administrador</h1>
+      <p><strong>Administrador designado:</strong> admin@edifybds.com</p>
+      <p id="adminAccessMessage" class="form-message"></p>
+    </section>
+
+    <section class="grid cards-3 admin-cards">
+      <article class="card admin-card" data-panel="rolesPanel">
+        <h3>Roles</h3>
+        <p>Crear roles y asignarlos a usuarios.</p>
+      </article>
+      <article class="card admin-card" data-panel="usersPanel">
+        <h3>Usuarios</h3>
+        <p>Ver usuarios registrados y su rol actual.</p>
+      </article>
+      <article class="card admin-card" data-panel="plansPanel">
+        <h3>Planes</h3>
+        <p>Configurar planes y limites de suscripcion.</p>
+      </article>
+      <article class="card admin-card" data-panel="catalogPanel">
+        <h3>Catalogo de trabajos</h3>
+        <p>Consultar trabajos de portafolio cargados.</p>
+      </article>
+      <article class="card admin-card" data-panel="seedsPanel">
+        <h3>Seeds demo</h3>
+        <p>Cargar 10 clientes, 10 contratistas y resenas.</p>
+      </article>
+    </section>
+
+    <section id="rolesPanel" class="card admin-panel" hidden>
+      <h2>Gestion de roles</h2>
+      <div class="grid form-grid">
+        <select id="adminUserSelect">
+          <option value="">Selecciona un usuario</option>
+        </select>
+        <select id="adminRoleSelect"></select>
+        <button id="adminChangeRoleBtn" class="btn" type="button">Cambiar rol</button>
+      </div>
+      <div class="grid form-grid admin-create-role">
+        <input id="newRoleName" type="text" placeholder="Nuevo rol (ej: supervisor)" />
+        <button id="createRoleBtn" class="btn secondary" type="button">Crear rol</button>
+      </div>
+      <p id="adminRoleMessage" class="form-message"></p>
+      <div id="rolesList" class="stack"></div>
+    </section>
+
+    <section id="usersPanel" class="card admin-panel" hidden>
+      <h2>Usuarios</h2>
+      <div id="usersList" class="stack"></div>
+    </section>
+
+    <section id="plansPanel" class="card admin-panel" hidden>
+      <h2>Planes</h2>
+      <div id="plansList" class="stack"></div>
+    </section>
+
+    <section id="catalogPanel" class="card admin-panel" hidden>
+      <h2>Catalogo de trabajos</h2>
+      <div id="catalogList" class="stack"></div>
+    </section>
+
+    <section id="seedsPanel" class="card admin-panel" hidden>
+      <h2>Seeds demo</h2>
+      <button id="seedDemoBtn" class="btn" type="button">Cargar seed demo (10 clientes, 10 contratistas, resenas)</button>
+      <p id="seedDemoMessage" class="form-message"></p>
+    </section>
+  </main>
+
+  <script type="module" src="./js/admin.js"></script>
+</body>
+</html>
