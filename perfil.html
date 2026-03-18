@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi Perfil | Edify BDS</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./index.html">Edify BDS</a>
+    <nav class="site-nav">
+      <a href="./contratistas.html">Contratistas</a>
+      <a href="./resenas.html">Resenas</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h1>Perfil del contratista</h1>
+      <form id="profileForm" class="grid form-grid">
+        <input id="nombreVisible" type="text" placeholder="Nombre visible" required />
+        <input id="especialidad" type="text" placeholder="Especialidad" required />
+        <input id="zona" type="text" placeholder="Zona" required />
+        <textarea id="descripcion" rows="4" placeholder="Descripcion"></textarea>
+        <button class="btn" type="submit">Guardar perfil</button>
+      </form>
+      <p id="profileMessage" class="form-message"></p>
+    </section>
+
+    <section class="card">
+      <h2>Mi catalogo de trabajos</h2>
+      <p>Proximamente: formulario para crear trabajos, subir imagenes y referencias por proyecto.</p>
+      <div id="portfolioList" class="stack"></div>
+    </section>
+
+    <section class="card">
+      <h2>Mi suscripcion</h2>
+      <div id="subscriptionInfo" class="stack"></div>
+      <p>Proximamente: selector de plan Gratis, Basico, Intermedio y Premium.</p>
+    </section>
+  </main>
+
+  <script type="module" src="./js/contractors.js"></script>
+</body>
+</html>

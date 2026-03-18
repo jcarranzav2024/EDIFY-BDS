@@ -1,0 +1,75 @@
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { auth, db } from "./firebase-config.js";
+import { asMessage, isValidEmail, minLength } from "./validators.js";
+
+const loginForm = document.getElementById("loginForm");
+const registerForm = document.getElementById("registerForm");
+
+if (loginForm) {
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = document.getElementById("loginMessage");
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    try {
+      if (!isValidEmail(email)) throw new Error("Correo no valido.");
+      if (!minLength(password, 6)) throw new Error("Contrasena demasiado corta.");
+
+      await signInWithEmailAndPassword(auth, email, password);
+      message.textContent = "Sesion iniciada. Redirigiendo...";
+      message.classList.remove("error");
+      setTimeout(() => {
+        window.location.href = "./index.html";
+      }, 600);
+    } catch (error) {
+      message.textContent = asMessage(error);
+      message.classList.add("error");
+    }
+  });
+}
+
+if (registerForm) {
+  registerForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = document.getElementById("registerMessage");
+
+    const nombre = document.getElementById("nombre").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const rol = document.getElementById("rol").value;
+
+    try {
+      if (!minLength(nombre, 2)) throw new Error("Nombre invalido.");
+      if (!isValidEmail(email)) throw new Error("Correo no valido.");
+      if (!minLength(password, 6)) throw new Error("Contrasena minimo 6 caracteres.");
+
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, "users", cred.user.uid), {
+        nombre,
+        email,
+        rol,
+        creadoEn: serverTimestamp(),
+        actualizadoEn: serverTimestamp()
+      });
+
+      message.textContent = "Cuenta creada. Redirigiendo...";
+      message.classList.remove("error");
+      setTimeout(() => {
+        window.location.href = "./index.html";
+      }, 700);
+    } catch (error) {
+      message.textContent = asMessage(error);
+      message.classList.add("error");
+    }
+  });
+}
+
+export async function logoutUser() {
+  await signOut(auth);
+}

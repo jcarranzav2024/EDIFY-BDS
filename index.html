@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edify BDS</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./index.html">Edify BDS</a>
+    <nav class="site-nav">
+      <a href="./contratistas.html">Contratistas</a>
+      <a href="./perfil.html">Mi Perfil</a>
+      <a href="./resenas.html">Resenas</a>
+      <a href="./login.html">Login</a>
+      <a href="./registro.html" class="btn small">Registro</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Conecta clientes y contratistas de forma segura</h1>
+      <p>Publica perfiles, muestra trabajos anteriores y construye reputacion con reseñas reales.</p>
+      <div class="cta-row">
+        <a class="btn" href="./registro.html">Empezar</a>
+        <a class="btn secondary" href="./contratistas.html">Ver contratistas</a>
+      </div>
+    </section>
+
+    <section class="grid cards-3">
+      <article class="card">
+        <h2>Catalogo de trabajos</h2>
+        <p>Sube proyectos terminados con fecha, imagenes y evidencia de calidad.</p>
+      </article>
+      <article class="card">
+        <h2>Resenas y referencias</h2>
+        <p>Fortalece la confianza con valoraciones y comentarios de clientes.</p>
+      </article>
+      <article class="card">
+        <h2>Planes de suscripcion</h2>
+        <p>Escala tu perfil con mas visibilidad y mayor capacidad de catalogo.</p>
+      </article>
+    </section>
+
+    <section class="card status-card">
+      <h2>Estado de sesion</h2>
+      <p id="sessionStatus">Verificando sesion...</p>
+      <button id="logoutBtn" class="btn secondary" type="button">Cerrar sesion</button>
+    </section>
+  </main>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

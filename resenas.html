@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resenas | Edify BDS</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./index.html">Edify BDS</a>
+    <nav class="site-nav">
+      <a href="./contratistas.html">Contratistas</a>
+      <a href="./perfil.html">Mi Perfil</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h1>Resenas de trabajos</h1>
+      <form id="reviewForm" class="grid form-grid">
+        <input id="contractorId" type="text" placeholder="ID del contratista" required />
+        <input id="jobId" type="text" placeholder="ID del trabajo" required />
+        <input id="estrellas" type="number" min="1" max="5" placeholder="Estrellas (1-5)" required />
+        <textarea id="comentario" rows="4" placeholder="Comentario" required></textarea>
+        <button class="btn" type="submit">Publicar resena</button>
+      </form>
+      <p id="reviewMessage" class="form-message"></p>
+    </section>
+
+    <section class="card">
+      <h2>Ultimas resenas</h2>
+      <div id="reviewsList" class="stack"></div>
+    </section>
+  </main>
+
+  <script type="module" src="./js/reviews.js"></script>
+</body>
+</html>

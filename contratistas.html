@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contratistas | Edify BDS</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./index.html">Edify BDS</a>
+    <nav class="site-nav">
+      <a href="./perfil.html">Mi Perfil</a>
+      <a href="./resenas.html">Resenas</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h1>Directorio de contratistas</h1>
+      <div class="grid filters">
+        <input id="filterEspecialidad" type="text" placeholder="Filtrar por especialidad" />
+        <input id="filterZona" type="text" placeholder="Filtrar por zona" />
+        <button id="filterBtn" class="btn" type="button">Aplicar filtros</button>
+      </div>
+    </section>
+
+    <section id="contractorsList" class="grid cards-3"></section>
+  </main>
+
+  <script type="module" src="./js/contractors.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+.auth-container {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 10px 24px rgba(16, 32, 56, 0.08);
+}
+
+.auth-card form {
+  display: grid;
+  gap: 10px;
+}
+
+.helper {
+  color: #516074;
+}
