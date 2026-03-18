@@ -8,8 +8,23 @@
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="./index.html">Edify BDS</a>
-    <nav class="site-nav">
+    <a class="brand" href="./index.html">
+      <img class="brand-logo" src="./img/Logo.ico.png" alt="Logo EdifyBDS" />
+      <span class="brand-name">Edify BDS</span>
+    </a>
+    <button
+      id="menuToggle"
+      class="menu-toggle"
+      type="button"
+      aria-label="Abrir menu"
+      aria-controls="mainNav"
+      aria-expanded="false"
+    >
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <nav id="mainNav" class="site-nav">
       <a href="./contratistas.html">Contratistas</a>
       <a href="./perfil.html">Mi Perfil</a>
       <a href="./resenas.html">Resenas</a>
@@ -19,12 +34,34 @@
   </header>
 
   <main class="container">
-    <section class="hero">
-      <h1>Conecta clientes y contratistas de forma segura</h1>
-      <p>Publica perfiles, muestra trabajos anteriores y construye reputacion con reseñas reales.</p>
-      <div class="cta-row">
-        <a class="btn" href="./registro.html">Empezar</a>
-        <a class="btn secondary" href="./contratistas.html">Ver contratistas</a>
+    <section class="hero hero-promo">
+      <div class="hero-copy">
+        <p class="hero-tag">Plataforma de contratistas confiables</p>
+        <h1>Conecta clientes y contratistas de forma segura</h1>
+        <p>Publica perfiles, muestra trabajos anteriores y construye reputacion con reseñas reales.</p>
+        <div class="cta-row">
+          <a class="btn" href="./registro.html">Empezar</a>
+          <a class="btn secondary" href="./contratistas.html">Ver contratistas</a>
+        </div>
+      </div>
+
+      <div class="carousel" data-carousel>
+        <div class="carousel-track" id="carouselTrack">
+          <figure class="carousel-slide active">
+            <img src="./img/carousel-1.svg" alt="Promocion de remodelacion residencial" />
+          </figure>
+          <figure class="carousel-slide">
+            <img src="./img/carousel-2.svg" alt="Contratistas verificados en Edify BDS" />
+          </figure>
+          <figure class="carousel-slide">
+            <img src="./img/carousel-3.svg" alt="Resenas y reputacion de trabajos en Edify BDS" />
+          </figure>
+        </div>
+
+        <button class="carousel-btn prev" id="carouselPrev" type="button" aria-label="Imagen anterior">&#10094;</button>
+        <button class="carousel-btn next" id="carouselNext" type="button" aria-label="Siguiente imagen">&#10095;</button>
+
+        <div class="carousel-dots" id="carouselDots" aria-label="Indicadores del carrusel"></div>
       </div>
     </section>
 

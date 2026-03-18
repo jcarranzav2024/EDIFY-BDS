@@ -13,10 +13,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth, db } from "./firebase-config.js";
 import { asMessage } from "./validators.js";
+import { initMobileNav } from "./nav.js";
 
 const form = document.getElementById("reviewForm");
 const message = document.getElementById("reviewMessage");
 const listEl = document.getElementById("reviewsList");
+
+initMobileNav();
 
 async function refreshReviews() {
   if (!listEl) return;

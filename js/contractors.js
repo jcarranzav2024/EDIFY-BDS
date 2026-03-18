@@ -13,12 +13,15 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth, db } from "./firebase-config.js";
 import { asMessage } from "./validators.js";
+import { initMobileNav } from "./nav.js";
 
 const listEl = document.getElementById("contractorsList");
 const filterBtn = document.getElementById("filterBtn");
 const profileForm = document.getElementById("profileForm");
 const profileMessage = document.getElementById("profileMessage");
 const subscriptionInfo = document.getElementById("subscriptionInfo");
+
+initMobileNav();
 
 async function loadContractors(filters = {}) {
   if (!listEl) return;
