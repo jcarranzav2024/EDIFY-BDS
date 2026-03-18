@@ -1,21 +1,95 @@
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { auth } from "./firebase-config.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { auth, db } from "./firebase-config.js";
 import { logoutUser } from "./auth.js";
 import { initMobileNav } from "./nav.js";
 
 const sessionStatus = document.getElementById("sessionStatus");
 const logoutBtn = document.getElementById("logoutBtn");
 const carousel = document.querySelector("[data-carousel]");
+const userMenu = document.getElementById("userMenu");
+const userGreeting = document.getElementById("userGreeting");
+const userMenuPanel = document.getElementById("userMenuPanel");
+const userMenuLogoutBtn = document.getElementById("userMenuLogoutBtn");
+const loginNavLink = document.getElementById("loginNavLink");
+const registerNavLink = document.getElementById("registerNavLink");
 
 initMobileNav();
 
-onAuthStateChanged(auth, (user) => {
-  if (!sessionStatus) return;
+function setUserMenuOpen(isOpen) {
+  if (!userGreeting || !userMenuPanel) return;
+  userGreeting.setAttribute("aria-expanded", String(isOpen));
+  userMenuPanel.hidden = !isOpen;
+}
+
+if (userGreeting && userMenuPanel) {
+  userGreeting.addEventListener("click", () => {
+    const isOpen = userGreeting.getAttribute("aria-expanded") === "true";
+    setUserMenuOpen(!isOpen);
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!userMenu) return;
+    if (!userMenu.contains(event.target)) {
+      setUserMenuOpen(false);
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      setUserMenuOpen(false);
+    }
+  });
+}
+
+if (userMenuLogoutBtn) {
+  userMenuLogoutBtn.addEventListener("click", async () => {
+    await logoutUser();
+    window.location.href = "./login.html";
+  });
+}
+
+onAuthStateChanged(auth, async (user) => {
   if (user) {
-    sessionStatus.textContent = `Sesion activa: ${user.email}`;
-  } else {
+    let nombre = user.displayName || user.email;
+    try {
+      const userRef = await getDoc(doc(db, "users", user.uid));
+      if (userRef.exists()) {
+        nombre = userRef.data().nombre || nombre;
+      }
+    } catch (error) {
+      // Keep fallback name when Firestore read fails.
+    }
+
+    if (sessionStatus) {
+      sessionStatus.textContent = `Sesion activa: ${user.email}`;
+    }
+    if (userMenu) {
+      userMenu.hidden = false;
+    }
+    if (userGreeting) {
+      userGreeting.textContent = `Hola, ${nombre}`;
+      userGreeting.title = "Abrir menu de usuario";
+      userGreeting.setAttribute("aria-label", "Abrir menu de usuario");
+    }
+    setUserMenuOpen(false);
+    if (registerNavLink) registerNavLink.hidden = true;
+    if (loginNavLink) loginNavLink.hidden = true;
+    return;
+  }
+
+  if (sessionStatus) {
     sessionStatus.textContent = "Sin sesion activa";
   }
+  if (userMenu) {
+    userMenu.hidden = true;
+  }
+  if (userGreeting) {
+    userGreeting.textContent = "";
+  }
+  setUserMenuOpen(false);
+  if (registerNavLink) registerNavLink.hidden = false;
+  if (loginNavLink) loginNavLink.hidden = false;
 });
 
 if (logoutBtn) {

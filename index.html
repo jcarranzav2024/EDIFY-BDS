@@ -28,8 +28,21 @@
       <a href="./contratistas.html">Contratistas</a>
       <a href="./perfil.html">Mi Perfil</a>
       <a href="./resenas.html">Resenas</a>
-      <a href="./login.html">Login</a>
-      <a href="./registro.html" class="btn small">Registro</a>
+      <div id="userMenu" class="user-menu" hidden>
+        <button
+          id="userGreeting"
+          class="nav-user user-menu-toggle"
+          type="button"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-controls="userMenuPanel"
+        ></button>
+        <div id="userMenuPanel" class="user-menu-panel" hidden>
+          <button id="userMenuLogoutBtn" class="user-menu-item" type="button">Cerrar sesion</button>
+        </div>
+      </div>
+      <a id="loginNavLink" href="./login.html">Login</a>
+      <a id="registerNavLink" href="./registro.html" class="btn small">Registro</a>
     </nav>
   </header>
 

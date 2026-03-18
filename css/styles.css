@@ -95,6 +95,71 @@ body {
   border-radius: 8px;
 }
 
+.nav-user {
+  appearance: none;
+  color: #ffffff;
+  background: rgba(87, 181, 71, 0.22);
+  border: 1px solid rgba(87, 181, 71, 0.5);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nav-user:hover {
+  background: rgba(87, 181, 71, 0.35);
+}
+
+.nav-user:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.user-menu {
+  position: relative;
+}
+
+.user-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-menu-toggle::after {
+  content: "\25BE";
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.user-menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 172px;
+  padding: 6px;
+  border-radius: 10px;
+  background: rgba(18, 33, 77, 0.96);
+  border: 1px solid rgba(147, 171, 224, 0.4);
+  box-shadow: 0 14px 24px rgba(6, 20, 44, 0.24);
+  z-index: 1200;
+}
+
+.user-menu-item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  text-align: left;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.user-menu-item:hover {
+  background: rgba(87, 181, 71, 0.28);
+}
+
 .site-nav a:hover {
   background: #57b547;
 }
@@ -403,6 +468,24 @@ textarea:focus {
   .site-nav a {
     width: 100%;
     padding: 10px 12px;
+  }
+
+  .user-menu {
+    width: 100%;
+  }
+
+  .user-menu-toggle {
+    width: 100%;
+    justify-content: space-between;
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+
+  .user-menu-panel {
+    position: static;
+    margin-top: 6px;
+    width: 100%;
+    min-width: 0;
   }
 
   .site-nav .btn.small {

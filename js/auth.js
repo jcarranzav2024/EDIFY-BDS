@@ -1,5 +1,6 @@
 import {
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   signInWithEmailAndPassword,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
@@ -58,11 +59,21 @@ if (registerForm) {
         actualizadoEn: serverTimestamp()
       });
 
-      message.textContent = "Cuenta creada. Redirigiendo...";
+      let verificationNote = "";
+      try {
+        await sendEmailVerification(cred.user);
+        verificationNote = " Se envio correo de verificacion.";
+      } catch (verificationError) {
+        verificationNote = " No se pudo enviar correo de verificacion.";
+      }
+
+      await signOut(auth);
+
+      message.textContent = `Cuenta creada correctamente.${verificationNote} Redirigiendo a login...`;
       message.classList.remove("error");
       setTimeout(() => {
-        window.location.href = "./index.html";
-      }, 700);
+        window.location.href = "./login.html";
+      }, 1400);
     } catch (error) {
       message.textContent = asMessage(error);
       message.classList.add("error");
