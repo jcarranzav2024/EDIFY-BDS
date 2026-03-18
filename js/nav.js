@@ -44,8 +44,23 @@ export function initAuthUserMenu() {
   const userMenuLogoutBtn = document.getElementById("userMenuLogoutBtn");
   const loginNavLink = document.getElementById("loginNavLink");
   const registerNavLink = document.getElementById("registerNavLink");
+  const header = document.querySelector(".site-header");
+  const menuToggle = document.getElementById("menuToggle");
 
   if (!userMenu || !userGreeting || !userMenuPanel) return;
+
+  let mobileUserChip = document.getElementById("mobileUserChip");
+  if (!mobileUserChip && header) {
+    mobileUserChip = document.createElement("span");
+    mobileUserChip.id = "mobileUserChip";
+    mobileUserChip.className = "mobile-user-chip";
+    mobileUserChip.hidden = true;
+    if (menuToggle) {
+      header.insertBefore(mobileUserChip, menuToggle);
+    } else {
+      header.appendChild(mobileUserChip);
+    }
+  }
 
   function setUserMenuOpen(isOpen) {
     userGreeting.setAttribute("aria-expanded", String(isOpen));
@@ -103,6 +118,11 @@ export function initAuthUserMenu() {
       userGreeting.textContent = `Hola, ${nombre} (${rol})`;
       userGreeting.title = "Abrir menu de usuario";
       userGreeting.setAttribute("aria-label", "Abrir menu de usuario");
+      if (mobileUserChip) {
+        mobileUserChip.hidden = false;
+        mobileUserChip.textContent = `${nombre} (${rol})`;
+        mobileUserChip.title = `Usuario: ${nombre} (${rol})`;
+      }
       if (userMenuAdminLink) {
         userMenuAdminLink.hidden = rol !== "admin";
       }
@@ -115,6 +135,11 @@ export function initAuthUserMenu() {
 
     userMenu.hidden = true;
     userGreeting.textContent = "";
+    if (mobileUserChip) {
+      mobileUserChip.hidden = true;
+      mobileUserChip.textContent = "";
+      mobileUserChip.title = "";
+    }
     if (userMenuAdminLink) {
       userMenuAdminLink.hidden = true;
     }

@@ -88,6 +88,21 @@ body {
   margin: 4px 0;
 }
 
+.mobile-user-chip {
+  display: none;
+  max-width: 40vw;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(87, 181, 71, 0.45);
+  background: rgba(87, 181, 71, 0.2);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .site-nav a {
   color: #ffffff;
   text-decoration: none;
@@ -516,6 +531,10 @@ textarea:focus {
 @media (max-width: 900px) {
   .site-header {
     position: relative;
+  }
+
+  .mobile-user-chip {
+    display: inline-block;
   }
 
   .menu-toggle {
