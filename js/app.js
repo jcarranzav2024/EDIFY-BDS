@@ -26,7 +26,7 @@ onAuthStateChanged(auth, async (user) => {
 if (logoutBtn) {
   logoutBtn.addEventListener("click", async () => {
     await logoutUser();
-    window.location.href = "./login.html";
+    window.location.href = "./index.html";
   });
 }
 

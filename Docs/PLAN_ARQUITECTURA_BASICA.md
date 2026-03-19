@@ -2,6 +2,7 @@
 
 ## Objetivo
 Construir una web sencilla de contratistas con:
+- Pagina principal publica para visitantes (sin login)
 - Registro e inicio de sesion
 - Perfil unico por usuario (cliente, contratista o admin)
 - Publicacion de perfiles de contratistas
@@ -60,9 +61,12 @@ EDIFY-BDS/
 
 ## Modulos funcionales (MVP)
 1. Autenticacion
+- Acceso publico al index para visitantes no autenticados
 - Registro con correo y contraseña
 - Inicio y cierre de sesion
 - Control de estado del usuario autenticado
+- Registro/login obligatorio solo para acciones privadas (ejemplo: contratar/solicitar servicio)
+- Al cerrar sesion, redireccion al index publico (no al login)
 
 2. Contratistas
 - Listado de perfiles
@@ -379,6 +383,12 @@ service cloud.firestore {
 ```
 
 ## Flujo tecnico
+0. Navegacion publica:
+- Visitantes pueden entrar a `index.html` sin autenticacion.
+- Visitantes pueden explorar informacion publica (home, catalogo/listados publicos).
+- Al intentar contratar/solicitar servicio, la app solicita registro o login.
+- Cuando un usuario cierra sesion, vuelve a `index.html` para continuar como visitante.
+
 1. Registro:
 - Crear usuario en Firebase Auth.
 - Guardar documento en users/{uid} con rol cliente o contratista.

@@ -87,7 +87,7 @@ export function initAuthUserMenu() {
   if (userMenuLogoutBtn) {
     userMenuLogoutBtn.addEventListener("click", async () => {
       await logoutUser();
-      window.location.href = "./login.html";
+      window.location.href = "./index.html";
     });
   }
 
