@@ -12,7 +12,12 @@ import {
   where
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth, db } from "./firebase-config.js";
-import { asMessage } from "./validators.js";
+import {
+  asMessage,
+  notifyError,
+  notifyInfo,
+  notifySuccess
+} from "./validators.js";
 import { initAuthUserMenu, initMobileNav } from "./nav.js";
 import {
   createPortfolioJob,
@@ -150,6 +155,12 @@ function setPortfolioMessage(text, isError = false) {
   if (!portfolioMessage) return;
   portfolioMessage.textContent = text;
   portfolioMessage.classList.toggle("error", isError);
+
+  if (isError) {
+    notifyError(text);
+    return;
+  }
+  notifyInfo(text);
 }
 
 function escapeHtml(value) {
@@ -588,9 +599,11 @@ if (profileForm) {
 
       profileMessage.textContent = "Perfil guardado correctamente.";
       profileMessage.classList.remove("error");
+      notifySuccess("Perfil de contratista guardado correctamente.");
     } catch (error) {
       profileMessage.textContent = asMessage(error);
       profileMessage.classList.add("error");
+      notifyError(asMessage(error));
     }
   });
 }
@@ -624,9 +637,11 @@ if (userProfileForm) {
 
       userProfileMessage.textContent = "Tus datos se guardaron correctamente.";
       userProfileMessage.classList.remove("error");
+      notifySuccess("Tus datos se guardaron correctamente.");
     } catch (error) {
       userProfileMessage.textContent = asMessage(error);
       userProfileMessage.classList.add("error");
+      notifyError(asMessage(error));
     }
   });
 }

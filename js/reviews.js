@@ -12,7 +12,7 @@ import {
   updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth, db } from "./firebase-config.js";
-import { asMessage } from "./validators.js";
+import { asMessage, notifyError, notifySuccess } from "./validators.js";
 import { initAuthUserMenu, initMobileNav } from "./nav.js";
 
 const form = document.getElementById("reviewForm");
@@ -104,10 +104,12 @@ if (form) {
       form.reset();
       message.textContent = "Resena publicada correctamente.";
       message.classList.remove("error");
+      notifySuccess("Resena publicada correctamente.");
       await refreshReviews();
     } catch (error) {
       message.textContent = asMessage(error);
       message.classList.add("error");
+      notifyError(asMessage(error));
     }
   });
 }

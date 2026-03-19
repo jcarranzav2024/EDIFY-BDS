@@ -13,7 +13,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth, db } from "./firebase-config.js";
 import { initAuthUserMenu, initMobileNav } from "./nav.js";
-import { asMessage } from "./validators.js";
+import { asMessage, notifyError, notifyInfo, notifySuccess } from "./validators.js";
 
 const DESIGNATED_ADMIN_EMAIL = "admin@edifybds.com";
 
@@ -219,6 +219,7 @@ if (createRoleBtn) {
     if (!role) {
       adminRoleMessage.textContent = "Ingresa un nombre de rol.";
       adminRoleMessage.classList.add("error");
+      notifyError("Ingresa un nombre de rol.");
       return;
     }
 
@@ -230,10 +231,12 @@ if (createRoleBtn) {
       newRoleName.value = "";
       adminRoleMessage.textContent = "Rol creado correctamente.";
       adminRoleMessage.classList.remove("error");
+      notifySuccess("Rol creado correctamente.");
       await loadRoles();
     } catch (error) {
       adminRoleMessage.textContent = `No se pudo crear rol: ${asMessage(error)}`;
       adminRoleMessage.classList.add("error");
+      notifyError(`No se pudo crear rol: ${asMessage(error)}`);
     }
   });
 }
@@ -246,6 +249,7 @@ if (adminChangeRoleBtn) {
     if (!targetUserId || !newRole) {
       adminRoleMessage.textContent = "Selecciona usuario y rol.";
       adminRoleMessage.classList.add("error");
+      notifyError("Selecciona usuario y rol.");
       return;
     }
 
@@ -256,10 +260,12 @@ if (adminChangeRoleBtn) {
       }, { merge: true });
       adminRoleMessage.textContent = "Rol actualizado correctamente.";
       adminRoleMessage.classList.remove("error");
+      notifySuccess("Rol actualizado correctamente.");
       await loadUsers();
     } catch (error) {
       adminRoleMessage.textContent = `No se pudo actualizar rol: ${asMessage(error)}`;
       adminRoleMessage.classList.add("error");
+      notifyError(`No se pudo actualizar rol: ${asMessage(error)}`);
     }
   });
 }
@@ -269,15 +275,18 @@ if (seedDemoBtn) {
     seedDemoBtn.disabled = true;
     seedDemoMessage.textContent = "Cargando datos demo...";
     seedDemoMessage.classList.remove("error");
+    notifyInfo("Cargando datos demo...");
 
     try {
       await verifyAdminWriteAccess();
       await seedDemoData();
       seedDemoMessage.textContent = "Seed completado correctamente.";
+      notifySuccess("Seed completado correctamente.");
       await Promise.all([loadUsers(), loadCatalog()]);
     } catch (error) {
       seedDemoMessage.textContent = `Error al cargar seed: ${asMessage(error)}. Verifica que las reglas Firestore nuevas esten publicadas y que entraste con admin@edifybds.com.`;
       seedDemoMessage.classList.add("error");
+      notifyError(`Error al cargar seed: ${asMessage(error)}`);
     } finally {
       seedDemoBtn.disabled = false;
     }
@@ -299,6 +308,7 @@ onAuthStateChanged(auth, async (user) => {
     if (role !== "admin") {
       adminAccessMessage.textContent = "No tienes permisos de administrador.";
       adminAccessMessage.classList.add("error");
+      notifyError("No tienes permisos de administrador.");
       setTimeout(() => {
         window.location.href = "./index.html";
       }, 1200);
@@ -307,11 +317,13 @@ onAuthStateChanged(auth, async (user) => {
 
     adminAccessMessage.textContent = "Acceso administrador habilitado.";
     adminAccessMessage.classList.remove("error");
+    notifySuccess("Acceso administrador habilitado.");
 
     await Promise.all([loadRoles(), loadUsers(), loadPlans(), loadCatalog()]);
     showPanel("rolesPanel");
   } catch (error) {
     adminAccessMessage.textContent = `Error cargando dashboard: ${asMessage(error)}`;
     adminAccessMessage.classList.add("error");
+    notifyError(`Error cargando dashboard: ${asMessage(error)}`);
   }
 });

@@ -6,7 +6,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth, db } from "./firebase-config.js";
-import { asMessage, isValidEmail, minLength } from "./validators.js";
+import {
+  asMessage,
+  isValidEmail,
+  minLength,
+  notifyError,
+  notifySuccess
+} from "./validators.js";
 
 const loginForm = document.getElementById("loginForm");
 const registerForm = document.getElementById("registerForm");
@@ -25,12 +31,14 @@ if (loginForm) {
       await signInWithEmailAndPassword(auth, email, password);
       message.textContent = "Sesion iniciada. Redirigiendo...";
       message.classList.remove("error");
+      notifySuccess("Sesion iniciada correctamente.");
       setTimeout(() => {
         window.location.href = "./index.html";
       }, 600);
     } catch (error) {
       message.textContent = asMessage(error);
       message.classList.add("error");
+      notifyError(asMessage(error));
     }
   });
 }
@@ -72,12 +80,14 @@ if (registerForm) {
 
       message.textContent = `Cuenta creada correctamente.${verificationNote} Redirigiendo a login...`;
       message.classList.remove("error");
+      notifySuccess("Cuenta creada correctamente.");
       setTimeout(() => {
         window.location.href = "./login.html";
       }, 1400);
     } catch (error) {
       message.textContent = asMessage(error);
       message.classList.add("error");
+      notifyError(asMessage(error));
     }
   });
 }
