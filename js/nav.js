@@ -5,6 +5,42 @@ import { logoutUser } from "./auth.js";
 
 const DESIGNATED_ADMIN_EMAIL = "admin@edifybds.com";
 
+export function initContactMenu() {
+  const contactMenu = document.getElementById("contactMenu");
+  const contactMenuToggle = document.getElementById("contactMenuToggle");
+  const contactMenuPanel = document.getElementById("contactMenuPanel");
+
+  if (!contactMenu || !contactMenuToggle || !contactMenuPanel) return;
+
+  function setContactMenuOpen(isOpen) {
+    contactMenuToggle.setAttribute("aria-expanded", String(isOpen));
+    contactMenuPanel.hidden = !isOpen;
+  }
+
+  contactMenuToggle.addEventListener("click", () => {
+    const isOpen = contactMenuToggle.getAttribute("aria-expanded") === "true";
+    setContactMenuOpen(!isOpen);
+  });
+
+  contactMenuPanel.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => {
+      setContactMenuOpen(false);
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!contactMenu.contains(event.target)) {
+      setContactMenuOpen(false);
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      setContactMenuOpen(false);
+    }
+  });
+}
+
 export function initMobileNav() {
   const toggle = document.getElementById("menuToggle");
   const nav = document.getElementById("mainNav");

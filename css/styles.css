@@ -146,6 +146,30 @@ body {
   line-height: 1;
 }
 
+.contact-menu-toggle {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.contact-menu-toggle::after {
+  content: "\25BE";
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.contact-menu-toggle:hover {
+  background: #57b547;
+}
+
 .user-menu-panel {
   position: absolute;
   top: calc(100% + 8px);
@@ -175,6 +199,19 @@ body {
 
 .user-menu-item:hover {
   background: rgba(87, 181, 71, 0.28);
+}
+
+.contact-menu .user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.contact-icon {
+  width: 16px;
+  height: 16px;
+  color: #ffffff;
+  flex-shrink: 0;
 }
 
 .site-nav a:hover {
@@ -778,6 +815,13 @@ textarea:focus {
   }
 
   .user-menu-toggle {
+    width: 100%;
+    justify-content: space-between;
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+
+  .contact-menu-toggle {
     width: 100%;
     justify-content: space-between;
     border-radius: 10px;
