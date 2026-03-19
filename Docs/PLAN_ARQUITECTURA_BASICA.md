@@ -18,7 +18,8 @@ Construir una web sencilla de contratistas con:
 - JavaScript vanilla (logica)
 - Firebase Authentication (registro/login)
 - Firebase Firestore (base de datos)
-- Firebase Storage (imagenes del catalogo)
+- URLs de imagen externas para catalogo (sin costo)
+- Firebase Storage (opcional para fase futura)
 - Pasarela de pago (Stripe o Mercado Pago)
 - Hosting estatico en GitHub Pages
 
@@ -70,9 +71,19 @@ EDIFY-BDS/
 
 3. Catalogo de trabajos anteriores
 - Crear trabajo realizado con fecha de ejecucion
-- Subir varias imagenes por trabajo
+- Registrar varias imagenes por trabajo mediante URLs
 - Adjuntar reseñas del trabajo
 - Adjuntar referencias de clientes
+
+Implementacion actual del catalogo:
+- CRUD completo en perfil de contratista.
+- Formulario en modal (abrir por boton "Nuevo trabajo").
+- Cierre del modal solo con boton "X".
+- Vista en tarjetas.
+- Mini galeria por tarjeta con imagen principal + miniaturas.
+- Clic en miniatura cambia la imagen principal de la tarjeta.
+- Boton "Tamano real" abre visor y permite navegar todas las fotos del trabajo.
+- Normalizacion de links de Google Images tipo /imgres a URL directa (imgurl).
 
 4. Reseñas
 - Crear reseña (1 a 5 estrellas + comentario)
@@ -143,13 +154,15 @@ Documento con ID automatico
   "descripcion": "Cambio de muebles y enchape",
   "fechaTrabajo": "2025-11-08",
   "imagenes": [
-    "https://firebasestorage.googleapis.com/.../img1.jpg",
-    "https://firebasestorage.googleapis.com/.../img2.jpg"
+    "https://sitio-publico.com/proyecto/img1.jpg",
+    "https://sitio-publico.com/proyecto/img2.jpg"
   ],
   "creadoEn": "serverTimestamp",
   "actualizadoEn": "serverTimestamp"
 }
 ```
+
+Nota: en el estado actual del MVP, `imagenes` almacena URLs publicas externas para evitar costo de Firebase Storage.
 
 ### Coleccion: reviews
 Documento con ID automatico
@@ -379,7 +392,9 @@ service cloud.firestore {
 
 4. Catalogo de trabajos:
 - Contratista crea trabajo en portfolio_jobs.
-- Sube imagenes a Firebase Storage y guarda URLs en el trabajo.
+- Registra URLs de imagen en el modal del catalogo.
+- La tarjeta muestra imagen principal y miniaturas.
+- "Tamano real" abre visor con navegacion entre todas las imagenes del trabajo.
 - Se validan limites segun plan activo.
 
 5. Reseña y referencia:
@@ -453,6 +468,7 @@ Semana 4
 - Sin chat en tiempo real.
 - Pagos en linea en fase inicial (sin facturacion avanzada).
 - El admin designado por email es una solucion practica para MVP (ideal migrar luego a custom claims con backend).
+- Las imagenes del catalogo se manejan por URL externa (sin carga binaria directa desde la app).
 
 ## Escalado futuro
 1. Agregar Cloud Functions para validaciones de negocio.
