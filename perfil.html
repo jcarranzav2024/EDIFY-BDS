@@ -97,8 +97,12 @@
 
     <section id="contractorCatalogSection" class="card">
       <h2>Mi catalogo de trabajos</h2>
-      <p>Proximamente: formulario para crear trabajos, subir imagenes y referencias por proyecto.</p>
-      <div id="portfolioList" class="stack"></div>
+      <p>Para evitar costos de Storage en esta etapa, agrega enlaces de imagen (URL) por trabajo.</p>
+      <div class="inline-actions">
+        <button id="openPortfolioModalBtn" class="btn" type="button">Nuevo trabajo</button>
+      </div>
+      <p id="portfolioMessage" class="form-message"></p>
+      <div id="portfolioList" class="portfolio-grid"></div>
     </section>
 
     <section id="subscriptionSection" class="card">
@@ -107,6 +111,26 @@
       <p>Proximamente: selector de plan Gratis, Basico, Intermedio y Premium.</p>
     </section>
   </main>
+
+  <div id="portfolioModal" class="app-modal" hidden>
+    <div id="portfolioModalBackdrop" class="app-modal-backdrop" data-close-modal="true"></div>
+    <section id="portfolioModalDialog" class="app-modal-dialog card" role="dialog" aria-modal="true" aria-labelledby="portfolioModalTitle">
+      <div class="app-modal-header">
+        <h3 id="portfolioModalTitle">Nuevo trabajo</h3>
+        <button id="portfolioModalCloseBtn" class="btn secondary" type="button" aria-label="Cerrar">X</button>
+      </div>
+      <form id="portfolioForm" class="grid form-grid">
+        <input id="portfolioTitulo" type="text" placeholder="Titulo del trabajo" required />
+        <input id="portfolioFecha" type="date" required />
+        <textarea id="portfolioDescripcion" rows="3" placeholder="Descripcion del trabajo" required></textarea>
+        <textarea id="portfolioImagenes" rows="4" placeholder="Pega URLs de imagen, una por linea"></textarea>
+        <div class="inline-actions">
+          <button id="portfolioSaveBtn" class="btn" type="submit">Guardar trabajo</button>
+          <button id="portfolioCancelEditBtn" class="btn secondary" type="button" hidden>Cancelar edicion</button>
+        </div>
+      </form>
+    </section>
+  </div>
 
   <script type="module" src="./js/contractors.js"></script>
 </body>

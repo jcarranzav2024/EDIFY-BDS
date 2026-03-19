@@ -14,6 +14,12 @@ import {
 import { auth, db } from "./firebase-config.js";
 import { asMessage } from "./validators.js";
 import { initAuthUserMenu, initMobileNav } from "./nav.js";
+import {
+  createPortfolioJob,
+  deletePortfolioJob,
+  getMyPortfolioJobs,
+  updatePortfolioJob
+} from "./portfolio.js";
 
 const listEl = document.getElementById("contractorsList");
 const filterBtn = document.getElementById("filterBtn");
@@ -30,10 +36,38 @@ const contractorProfileSection = document.getElementById("contractorProfileSecti
 const contractorCatalogSection = document.getElementById("contractorCatalogSection");
 const subscriptionSection = document.getElementById("subscriptionSection");
 
+const portfolioForm = document.getElementById("portfolioForm");
+const portfolioMessage = document.getElementById("portfolioMessage");
+const portfolioList = document.getElementById("portfolioList");
+const openPortfolioModalBtn = document.getElementById("openPortfolioModalBtn");
+const portfolioModal = document.getElementById("portfolioModal");
+const portfolioModalBackdrop = document.getElementById("portfolioModalBackdrop");
+const portfolioModalDialog = document.getElementById("portfolioModalDialog");
+const portfolioModalTitle = document.getElementById("portfolioModalTitle");
+const portfolioModalCloseBtn = document.getElementById("portfolioModalCloseBtn");
+const portfolioTitulo = document.getElementById("portfolioTitulo");
+const portfolioFecha = document.getElementById("portfolioFecha");
+const portfolioDescripcion = document.getElementById("portfolioDescripcion");
+const portfolioImagenes = document.getElementById("portfolioImagenes");
+const portfolioSaveBtn = document.getElementById("portfolioSaveBtn");
+const portfolioCancelEditBtn = document.getElementById("portfolioCancelEditBtn");
+
 const requestMessage = document.getElementById("requestMessage");
 
 let currentUser = null;
 let currentRole = "guest";
+let editingPortfolioId = null;
+let myPortfolioJobs = [];
+
+let imageViewer = null;
+let imageViewerMain = null;
+let imageViewerTitle = null;
+let imageViewerCounter = null;
+let imageViewerPrevBtn = null;
+let imageViewerNextBtn = null;
+let imageViewerCloseBtn = null;
+let viewerImages = [];
+let viewerIndex = 0;
 
 initMobileNav();
 initAuthUserMenu();
@@ -110,6 +144,276 @@ function setProfileAvailabilityByRole() {
   if (contractorProfileSection) contractorProfileSection.hidden = false;
   if (contractorCatalogSection) contractorCatalogSection.hidden = false;
   if (subscriptionSection) subscriptionSection.hidden = false;
+}
+
+function setPortfolioMessage(text, isError = false) {
+  if (!portfolioMessage) return;
+  portfolioMessage.textContent = text;
+  portfolioMessage.classList.toggle("error", isError);
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function setPortfolioModalOpen(isOpen) {
+  if (!portfolioModal) return;
+  portfolioModal.hidden = !isOpen;
+  document.body.style.overflow = isOpen ? "hidden" : "";
+
+  if (isOpen) {
+    window.setTimeout(() => {
+      portfolioTitulo?.focus();
+    }, 0);
+  }
+}
+
+function setImageViewerOpen(isOpen) {
+  if (!imageViewer) return;
+  imageViewer.hidden = !isOpen;
+  document.body.style.overflow = isOpen ? "hidden" : "";
+}
+
+function normalizeUrl(url) {
+  try {
+    return new URL(url).toString();
+  } catch (error) {
+    return String(url || "").trim();
+  }
+}
+
+function renderImageViewer() {
+  if (!imageViewerMain || !imageViewerCounter || !viewerImages.length) return;
+  const currentUrl = viewerImages[viewerIndex];
+  imageViewerMain.src = currentUrl;
+  imageViewerMain.alt = `Imagen ${viewerIndex + 1} de ${viewerImages.length}`;
+  imageViewerCounter.textContent = `${viewerIndex + 1} / ${viewerImages.length}`;
+}
+
+function ensureImageViewer() {
+  if (imageViewer) return;
+
+  imageViewer = document.createElement("div");
+  imageViewer.id = "portfolioImageViewer";
+  imageViewer.className = "app-modal image-viewer";
+  imageViewer.hidden = true;
+  imageViewer.innerHTML = `
+    <div class="app-modal-backdrop"></div>
+    <section class="app-modal-dialog card image-viewer-dialog" role="dialog" aria-modal="true" aria-labelledby="imageViewerTitle">
+      <div class="app-modal-header">
+        <h3 id="imageViewerTitle">Tamano real</h3>
+        <button id="imageViewerCloseBtn" class="btn secondary" type="button" aria-label="Cerrar">X</button>
+      </div>
+      <div class="image-viewer-stage">
+        <button id="imageViewerPrevBtn" class="image-viewer-nav prev" type="button" aria-label="Imagen anterior">&#8249;</button>
+        <img id="imageViewerMain" class="image-viewer-main" src="" alt="Imagen en tamano real" loading="lazy" />
+        <button id="imageViewerNextBtn" class="image-viewer-nav next" type="button" aria-label="Imagen siguiente">&#8250;</button>
+      </div>
+      <p id="imageViewerCounter" class="image-viewer-counter"></p>
+    </section>
+  `;
+
+  document.body.appendChild(imageViewer);
+
+  imageViewerMain = document.getElementById("imageViewerMain");
+  imageViewerTitle = document.getElementById("imageViewerTitle");
+  imageViewerCounter = document.getElementById("imageViewerCounter");
+  imageViewerPrevBtn = document.getElementById("imageViewerPrevBtn");
+  imageViewerNextBtn = document.getElementById("imageViewerNextBtn");
+  imageViewerCloseBtn = document.getElementById("imageViewerCloseBtn");
+
+  imageViewerCloseBtn?.addEventListener("click", () => {
+    setImageViewerOpen(false);
+  });
+
+  imageViewerPrevBtn?.addEventListener("click", () => {
+    if (!viewerImages.length) return;
+    viewerIndex = (viewerIndex - 1 + viewerImages.length) % viewerImages.length;
+    renderImageViewer();
+  });
+
+  imageViewerNextBtn?.addEventListener("click", () => {
+    if (!viewerImages.length) return;
+    viewerIndex = (viewerIndex + 1) % viewerImages.length;
+    renderImageViewer();
+  });
+}
+
+function openImageViewer(images, startUrl, title) {
+  const normalized = (images || [])
+    .map((item) => normalizeUrl(item))
+    .filter(Boolean);
+
+  if (!normalized.length) return;
+
+  ensureImageViewer();
+  viewerImages = normalized;
+
+  const start = normalizeUrl(startUrl);
+  const startIndex = normalized.findIndex((img) => normalizeUrl(img) === start);
+  viewerIndex = startIndex >= 0 ? startIndex : 0;
+
+  if (imageViewerTitle) {
+    imageViewerTitle.textContent = title || "Tamano real";
+  }
+
+  renderImageViewer();
+  setImageViewerOpen(true);
+}
+
+function parseImageUrls(rawText) {
+  const rawLines = String(rawText || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  function normalizeImageUrl(line) {
+    const parsed = new URL(line);
+
+    // Google Images result links are not direct images; use imgurl when present.
+    if (parsed.hostname.includes("google.") && parsed.pathname === "/imgres") {
+      const embeddedImageUrl = parsed.searchParams.get("imgurl");
+      if (embeddedImageUrl) {
+        return new URL(embeddedImageUrl).toString();
+      }
+    }
+
+    return parsed.toString();
+  }
+
+  const urls = [];
+  for (const line of rawLines) {
+    try {
+      const normalized = normalizeImageUrl(line);
+      const u = new URL(normalized);
+      if (!["http:", "https:"].includes(u.protocol)) {
+        throw new Error("URL no valida");
+      }
+      urls.push(u.toString());
+    } catch (error) {
+      throw new Error(`URL de imagen invalida: ${line}`);
+    }
+  }
+  return urls;
+}
+
+function resetPortfolioForm() {
+  if (!portfolioForm) return;
+  editingPortfolioId = null;
+  portfolioForm.reset();
+  if (portfolioSaveBtn) portfolioSaveBtn.textContent = "Guardar trabajo";
+  if (portfolioCancelEditBtn) portfolioCancelEditBtn.hidden = true;
+  if (portfolioModalTitle) portfolioModalTitle.textContent = "Nuevo trabajo";
+}
+
+function renderPortfolioJobs() {
+  if (!portfolioList) return;
+  if (!myPortfolioJobs.length) {
+    portfolioList.innerHTML = "<p>Aun no tienes trabajos cargados en el catalogo.</p>";
+    return;
+  }
+
+  const html = myPortfolioJobs
+    .sort((a, b) => String(b.fechaTrabajo || "").localeCompare(String(a.fechaTrabajo || "")))
+    .map((job) => {
+      const safeTitle = escapeHtml(job.titulo || "Trabajo");
+      const safeDate = escapeHtml(job.fechaTrabajo || "N/A");
+      const safeDescription = escapeHtml(job.descripcion || "Sin descripcion");
+      const jobImages = Array.isArray(job.imagenes) ? job.imagenes.filter(Boolean) : [];
+      const galleryPreview = jobImages.slice(0, 6).map((url, index) => {
+        const safeUrl = escapeHtml(url);
+        const alt = `${safeTitle} - imagen ${index + 1}`;
+        return `
+          <button
+            class="portfolio-thumb-btn"
+            type="button"
+            data-thumb-url="${safeUrl}"
+            data-thumb-alt="${escapeHtml(alt)}"
+            title="Usar imagen ${index + 1} como principal"
+          >
+            <img class="portfolio-thumb-mini" src="${safeUrl}" alt="${alt}" loading="lazy" />
+          </button>
+        `;
+      }).join("");
+
+      const remainingCount = jobImages.length > 6 ? jobImages.length - 6 : 0;
+      const galleryHtml = jobImages.length
+        ? `
+          <div class="portfolio-gallery" aria-label="Galeria de imagenes de ${safeTitle}">
+            <div class="portfolio-main-media">
+              <img
+                class="portfolio-main-image"
+                src="${escapeHtml(jobImages[0])}"
+                alt="Imagen principal de ${safeTitle}"
+                loading="lazy"
+              />
+              <button
+                class="portfolio-view-original-btn"
+                type="button"
+                data-open-original-url="${escapeHtml(jobImages[0])}"
+              >Tamano real</button>
+            </div>
+            <div class="portfolio-thumbs">
+              ${galleryPreview}
+              ${remainingCount ? `<span class="portfolio-more">+${remainingCount}</span>` : ""}
+            </div>
+          </div>
+        `
+        : "<p class=\"portfolio-no-images\">Sin imagenes cargadas.</p>";
+
+      return `
+        <article class="card portfolio-item" data-job-id="${job.id}">
+          ${galleryHtml}
+          <h3>${safeTitle}</h3>
+          <p><strong>Fecha:</strong> ${safeDate}</p>
+          <p>${safeDescription}</p>
+          <div class="inline-actions">
+            <button class="btn secondary portfolio-edit-btn" type="button" data-edit-id="${job.id}">Editar</button>
+            <button class="btn portfolio-delete-btn" type="button" data-delete-id="${job.id}">Eliminar</button>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+
+  portfolioList.innerHTML = html;
+}
+
+async function loadPortfolioJobs() {
+  if (!portfolioList) return;
+  if (currentRole !== "contratista") {
+    portfolioList.innerHTML = "<p>Solo cuentas de contratista pueden gestionar catalogo.</p>";
+    return;
+  }
+
+  portfolioList.innerHTML = "<p>Cargando trabajos...</p>";
+  try {
+    myPortfolioJobs = await getMyPortfolioJobs(100);
+    renderPortfolioJobs();
+  } catch (error) {
+    portfolioList.innerHTML = `<p>No se pudo cargar tu catalogo: ${asMessage(error)}</p>`;
+  }
+}
+
+function startEditPortfolioJob(jobId) {
+  const job = myPortfolioJobs.find((item) => item.id === jobId);
+  if (!job || !portfolioForm) return;
+
+  editingPortfolioId = job.id;
+  portfolioTitulo.value = job.titulo || "";
+  portfolioFecha.value = job.fechaTrabajo || "";
+  portfolioDescripcion.value = job.descripcion || "";
+  portfolioImagenes.value = Array.isArray(job.imagenes) ? job.imagenes.join("\n") : "";
+  if (portfolioSaveBtn) portfolioSaveBtn.textContent = "Actualizar trabajo";
+  if (portfolioCancelEditBtn) portfolioCancelEditBtn.hidden = false;
+  if (portfolioModalTitle) portfolioModalTitle.textContent = "Editar trabajo";
+  setPortfolioModalOpen(true);
+  setPortfolioMessage("Editando trabajo seleccionado.");
 }
 
 async function loadUserProfileData(user) {
@@ -327,6 +631,132 @@ if (userProfileForm) {
   });
 }
 
+if (portfolioForm) {
+  portfolioForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (currentRole !== "contratista") {
+      setPortfolioMessage("Solo los contratistas pueden gestionar el catalogo.", true);
+      return;
+    }
+
+    try {
+      const payload = {
+        titulo: portfolioTitulo.value.trim(),
+        fechaTrabajo: portfolioFecha.value,
+        descripcion: portfolioDescripcion.value.trim(),
+        imagenes: parseImageUrls(portfolioImagenes.value)
+      };
+
+      if (!payload.titulo || !payload.fechaTrabajo || !payload.descripcion) {
+        throw new Error("Completa titulo, fecha y descripcion.");
+      }
+
+      if (editingPortfolioId) {
+        await updatePortfolioJob(editingPortfolioId, payload);
+        setPortfolioMessage("Trabajo actualizado correctamente.");
+      } else {
+        await createPortfolioJob(payload);
+        setPortfolioMessage("Trabajo agregado al catalogo.");
+      }
+
+      resetPortfolioForm();
+      setPortfolioModalOpen(false);
+      await loadPortfolioJobs();
+    } catch (error) {
+      setPortfolioMessage(asMessage(error), true);
+    }
+  });
+}
+
+if (openPortfolioModalBtn) {
+  openPortfolioModalBtn.addEventListener("click", () => {
+    resetPortfolioForm();
+    setPortfolioModalOpen(true);
+  });
+}
+
+if (portfolioModalCloseBtn) {
+  portfolioModalCloseBtn.addEventListener("click", () => {
+    setPortfolioModalOpen(false);
+  });
+}
+
+if (portfolioModal) {
+  if (portfolioModalDialog) {
+    portfolioModalDialog.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+  }
+}
+
+if (portfolioCancelEditBtn) {
+  portfolioCancelEditBtn.addEventListener("click", () => {
+    resetPortfolioForm();
+    setPortfolioMessage("Edicion cancelada.");
+  });
+}
+
+if (portfolioList) {
+  portfolioList.addEventListener("click", async (event) => {
+    const thumbBtn = event.target.closest(".portfolio-thumb-btn");
+    if (thumbBtn) {
+      const card = thumbBtn.closest(".portfolio-item");
+      const mainImage = card?.querySelector(".portfolio-main-image");
+      const originalBtn = card?.querySelector(".portfolio-view-original-btn");
+      const newUrl = thumbBtn.dataset.thumbUrl;
+      const newAlt = thumbBtn.dataset.thumbAlt || "Imagen principal";
+
+      if (mainImage && newUrl) {
+        mainImage.src = newUrl;
+        mainImage.alt = newAlt;
+      }
+      if (originalBtn && newUrl) {
+        originalBtn.dataset.openOriginalUrl = newUrl;
+      }
+      return;
+    }
+
+    const viewOriginalBtn = event.target.closest(".portfolio-view-original-btn");
+    if (viewOriginalBtn) {
+      const card = viewOriginalBtn.closest(".portfolio-item");
+      const jobId = card?.dataset.jobId;
+      const job = myPortfolioJobs.find((item) => item.id === jobId);
+      const activeImageUrl = viewOriginalBtn.dataset.openOriginalUrl;
+      const jobTitle = job?.titulo ? `Tamano real - ${job.titulo}` : "Tamano real";
+
+      if (job?.imagenes?.length) {
+        openImageViewer(job.imagenes, activeImageUrl, jobTitle);
+      }
+      return;
+    }
+
+    const editBtn = event.target.closest(".portfolio-edit-btn");
+    if (editBtn) {
+      startEditPortfolioJob(editBtn.dataset.editId);
+      return;
+    }
+
+    const deleteBtn = event.target.closest(".portfolio-delete-btn");
+    if (!deleteBtn) return;
+
+    if (!window.confirm("Quieres eliminar este trabajo del catalogo?")) {
+      return;
+    }
+
+    try {
+      await deletePortfolioJob(deleteBtn.dataset.deleteId);
+      if (editingPortfolioId === deleteBtn.dataset.deleteId) {
+        resetPortfolioForm();
+      }
+      setPortfolioMessage("Trabajo eliminado correctamente.");
+      await loadPortfolioJobs();
+    } catch (error) {
+      setPortfolioMessage(`No se pudo eliminar: ${asMessage(error)}`, true);
+    }
+  });
+}
+
 if (listEl) {
   listEl.addEventListener("click", async (event) => {
     const btn = event.target.closest(".request-service-btn");
@@ -405,5 +835,14 @@ onAuthStateChanged(auth, async (user) => {
     }
   } else if (subscriptionInfo && currentRole !== "contratista") {
     subscriptionInfo.innerHTML = "<p>Solo cuentas de contratista gestionan suscripcion.</p>";
+  }
+
+  if (user && currentRole === "contratista") {
+    if (openPortfolioModalBtn) openPortfolioModalBtn.disabled = false;
+    await loadPortfolioJobs();
+  } else if (portfolioList) {
+    if (openPortfolioModalBtn) openPortfolioModalBtn.disabled = true;
+    setPortfolioModalOpen(false);
+    portfolioList.innerHTML = "<p>Solo cuentas de contratista pueden gestionar catalogo.</p>";
   }
 });
