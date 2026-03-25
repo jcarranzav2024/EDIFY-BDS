@@ -7,9 +7,13 @@ Construir una web sencilla de contratistas con:
 - Perfil unico por usuario (cliente, contratista o admin)
 - Publicacion de perfiles de contratistas
 - Catalogo de trabajos anteriores por contratista
-- Reseñas y calificacion
+- Calificaciones de 1 a 5 estrellas con comentario opcional
+- Visibilidad privada de calificaciones (solo contratista propietario, admins y clientes autenticados oficiales)
 - Referencias de clientes por trabajo
 - Suscripciones por planes (gratis, basico, intermedio, premium)
+- Mensajeria cliente-contratista (solicitud y respuesta)
+- Bot de ayuda con opciones de funciones clave de la plataforma
+- Experiencia responsiva para moviles (flujos nuevos y existentes)
 - Dashboard administrativo separado para gestion
 - Persistencia real en la nube sin servidor propio
 
@@ -73,10 +77,17 @@ EDIFY-BDS/
 - Filtros por especialidad y zona
 - Vista de perfil publico
 
-3. Catalogo de trabajos anteriores
+3. Calificaciones privadas (1 a 5 estrellas)
+- Cliente autenticado oficial califica contratista con estrellas (1 a 5).
+- Comentario opcional por calificacion.
+- Validacion: una calificacion por cliente y contratista (actualizable por el cliente).
+- Visibilidad de calificaciones: solo contratista propietario, admins y clientes autenticados oficiales.
+- No se muestran calificaciones a visitantes anonimos.
+
+4. Catalogo de trabajos anteriores
 - Crear trabajo realizado con fecha de ejecucion
 - Registrar varias imagenes por trabajo mediante URLs
-- Adjuntar reseñas del trabajo
+- Adjuntar calificaciones del trabajo (1 a 5 + comentario opcional)
 - Adjuntar referencias de clientes
 
 Implementacion actual del catalogo:
@@ -88,27 +99,50 @@ Implementacion actual del catalogo:
 - Clic en miniatura cambia la imagen principal de la tarjeta.
 - Boton "Tamano real" abre visor y permite navegar todas las fotos del trabajo.
 - Normalizacion de links de Google Images tipo /imgres a URL directa (imgurl).
+- Compatibilidad movil: tarjetas fluidas, galeria tactil y modal ajustado a pantalla pequena.
 
-4. Reseñas
-- Crear reseña (1 a 5 estrellas + comentario)
-- Ver reseñas por contratista
-- Calculo de promedio
+5. Referencias
+- Crear referencia por trabajo
+- Ver referencias autorizadas por contratista
 
-5. Suscripciones y planes
+6. Mensajeria cliente-contratista
+- Cliente autenticado envia mensaje de interes/solicitud al contratista.
+- Contratista ve una lista de clientes interesados y responde cada mensaje.
+- Estados del hilo: nuevo, leido, respondido, cerrado.
+- Notificacion visual en perfil del contratista para mensajes pendientes.
+- Acceso: solo participantes del hilo y admin.
+
+7. Bot de ayuda (FAQ guiada)
+- Bot en frontend con opciones rapidas (sin IA obligatoria para MVP).
+- Flujos minimos: como publicar trabajos, como contratar contratistas, como dejar calificacion, como gestionar plan.
+- Boton flotante visible en mobile y desktop.
+- Escalado futuro: integrar IA o base de conocimiento dinamica.
+
+8. Suscripciones y planes
 - Planes: gratis, basico, intermedio, premium
 - Registro de suscripcion activa por usuario
 - Control de limites por plan (cantidad de trabajos en catalogo, imagenes, visibilidad)
 
-6. Administracion (Dashboard Admin)
+9. Administracion (Dashboard Admin)
 - Gestion de roles (cambiar rol de usuarios)
 - Gestion de usuarios
 - Vista de planes
 - Vista de catalogo de trabajos
+- Vista de calificaciones privadas (auditoria)
+- Vista de mensajes y moderacion
 - Ejecucion de seed demo
 
-7. Persistencia
+10. Persistencia
 - Datos en Firestore (no localStorage como fuente principal)
 - Lectura/escritura desde navegador con SDK de Firebase
+- Indices y consultas optimizadas para mobile (paginacion por lotes y carga incremental)
+
+11. Responsividad transversal (mobile-first)
+- Layout mobile-first en todas las vistas (index, contratistas, perfil, reseñas, admin y autenticacion).
+- Breakpoints recomendados: 360, 480, 768, 1024, 1280.
+- Formularios con controles tactiles, botones min. 44px, tipografia legible y espaciado vertical.
+- Tablas del admin con version compacta o tarjetas en pantallas pequenas.
+- Validar navegacion tactil para modales, dropdowns, galerias y bot de ayuda.
 
 ## Modelo de datos simplificado (Firestore)
 
@@ -181,6 +215,11 @@ Documento con ID automatico
 }
 ```
 
+Regla funcional adicional:
+- `estrellas` debe estar entre 1 y 5.
+- `comentario` es opcional.
+- Para evitar duplicados por contratista, usar opcionalmente una llave compuesta en el cliente (`contractorId_clientId`) o una consulta de verificacion antes de crear.
+
 ### Coleccion: client_references
 Documento con ID automatico
 ```json
@@ -239,6 +278,48 @@ Documento con ID automatico
 }
 ```
 
+### Coleccion: contractor_messages
+Documento con ID automatico
+```json
+{
+  "contractorId": "uid_contratista",
+  "clientId": "uid_cliente",
+  "subject": "Solicitud de cotizacion",
+  "message": "Necesito remodelar cocina y bano",
+  "status": "nuevo",
+  "createdAt": "serverTimestamp",
+  "updatedAt": "serverTimestamp"
+}
+```
+
+### Subcoleccion: contractor_messages/{messageId}/replies/{replyId}
+Documento con ID automatico
+```json
+{
+  "senderId": "uid_contratista_o_uid_cliente",
+  "senderRole": "contratista",
+  "message": "Claro, puedo visitarle el viernes.",
+  "createdAt": "serverTimestamp"
+}
+```
+
+### Coleccion: help_bot_faq
+Documento con ID = slug de opcion
+```json
+{
+  "title": "Como publicar trabajos",
+  "category": "catalogo",
+  "steps": [
+    "Ingrese a su perfil de contratista",
+    "Presione Nuevo trabajo",
+    "Complete titulo, descripcion e imagenes por URL",
+    "Guarde y valide que aparezca en su catalogo"
+  ],
+  "active": true,
+  "updatedAt": "serverTimestamp"
+}
+```
+
 ### Coleccion: roles
 Documento con ID = nombre del rol
 ```json
@@ -249,11 +330,13 @@ Documento con ID = nombre del rol
 ```
 
 ## Reglas basicas de seguridad (Firestore)
-1. Solo usuarios autenticados pueden escribir reseñas.
+1. Solo usuarios autenticados oficiales pueden escribir calificaciones.
 2. Solo contratistas pueden editar su perfil profesional y sus trabajos.
-3. Solo clientes autenticados pueden crear referencias y reseñas.
-4. Lectura publica de perfiles, catalogo, reseñas y referencias autorizadas.
+3. Solo clientes autenticados pueden crear referencias y calificaciones.
+4. Lectura de calificaciones restringida a contratista propietario, admin y clientes autenticados oficiales.
 5. Solo admin puede gestionar roles, planes y usuarios.
+6. Mensajes entre clientes y contratistas visibles solo para participantes y admin.
+7. Bot FAQ de solo lectura publica; edicion solo admin.
 
 Reglas exactas recomendadas para el estado actual del proyecto:
 ```txt
@@ -323,13 +406,28 @@ service cloud.firestore {
     }
 
     match /reviews/{reviewId} {
-      allow read: if true;
-
-      allow create: if isSignedIn() && (
-        isAdmin() || (userRole() == "cliente" && request.resource.data.clientId == request.auth.uid)
+      allow read: if isAdmin() || (
+        isSignedIn() && (
+          userRole() == "cliente" ||
+          request.auth.uid == resource.data.contractorId
+        )
       );
 
-      allow update, delete: if isAdmin();
+      allow create: if isSignedIn() && (
+        isAdmin() || (
+          userRole() == "cliente" &&
+          request.resource.data.clientId == request.auth.uid &&
+          request.resource.data.estrellas >= 1 &&
+          request.resource.data.estrellas <= 5
+        )
+      );
+
+      allow update: if isAdmin() || (
+        isSignedIn() && userRole() == "cliente" && resource.data.clientId == request.auth.uid &&
+        request.resource.data.estrellas >= 1 && request.resource.data.estrellas <= 5
+      );
+
+      allow delete: if isAdmin();
     }
 
     match /client_references/{referenceId} {
@@ -374,6 +472,51 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /contractor_messages/{messageId} {
+      allow create: if isSignedIn() && (
+        isAdmin() || (userRole() == "cliente" && request.resource.data.clientId == request.auth.uid)
+      );
+
+      allow read: if isAdmin() || (
+        isSignedIn() && (
+          request.auth.uid == resource.data.clientId ||
+          request.auth.uid == resource.data.contractorId
+        )
+      );
+
+      allow update: if isAdmin() || (
+        isSignedIn() && (
+          request.auth.uid == resource.data.contractorId ||
+          request.auth.uid == resource.data.clientId
+        )
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    match /contractor_messages/{messageId}/replies/{replyId} {
+      allow create: if isAdmin() || (
+        isSignedIn() && exists(/databases/$(database)/documents/contractor_messages/$(messageId)) && (
+          request.auth.uid == get(/databases/$(database)/documents/contractor_messages/$(messageId)).data.clientId ||
+          request.auth.uid == get(/databases/$(database)/documents/contractor_messages/$(messageId)).data.contractorId
+        )
+      );
+
+      allow read: if isAdmin() || (
+        isSignedIn() && exists(/databases/$(database)/documents/contractor_messages/$(messageId)) && (
+          request.auth.uid == get(/databases/$(database)/documents/contractor_messages/$(messageId)).data.clientId ||
+          request.auth.uid == get(/databases/$(database)/documents/contractor_messages/$(messageId)).data.contractorId
+        )
+      );
+
+      allow update, delete: if isAdmin();
+    }
+
+    match /help_bot_faq/{faqId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /roles/{roleId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
@@ -407,20 +550,36 @@ service cloud.firestore {
 - "Tamano real" abre visor con navegacion entre todas las imagenes del trabajo.
 - Se validan limites segun plan activo.
 
-5. Reseña y referencia:
-- Cliente autenticado crea documento en reviews.
+5. Calificacion y referencia:
+- Cliente autenticado oficial crea/actualiza calificacion en reviews (1 a 5 + comentario opcional).
 - Cliente autenticado crea referencia en client_references.
 - Recalcular ratingPromedio y totalResenas del contratista.
+- La vista de calificaciones queda restringida (contratista propietario, admin y clientes logeados oficiales).
 
 6. Suscripcion:
 - Contratista selecciona plan (gratis, basico, intermedio, premium).
 - Se registra pago en pasarela y luego se guarda subscriptions.
 - La app aplica limites y beneficios del plan.
 
-7. Administracion:
+7. Mensajeria cliente-contratista:
+- Cliente autenticado envia mensaje al contratista desde su perfil publico.
+- Contratista visualiza lista de clientes interesados en su bandeja.
+- Contratista responde y se registra el hilo en subcoleccion replies.
+
+8. Bot de ayuda:
+- Usuario abre boton flotante del bot.
+- Selecciona opcion guiada (ej: como publicar trabajos).
+- Bot muestra pasos y enlaces directos a secciones relevantes.
+
+9. Administracion:
 - Dashboard separado en admin-dashboard.html.
-- Admin puede gestionar roles, usuarios, planes, catalogo y seed demo.
+- Admin puede gestionar roles, usuarios, planes, catalogo, calificaciones, mensajes y seed demo.
 - El acceso al dashboard aparece en el dropdown de usuario solo para rol admin.
+
+10. Responsividad global:
+- Todas las vistas y flujos del sistema deben ser mobile-first.
+- Verificacion minima en telefonos de gama baja/media y tablets.
+- Las funciones nuevas (calificaciones privadas, mensajeria y bot) deben funcionar con interaccion tactil.
 
 ## Configuracion minima de Firebase en frontend
 Archivo sugerido: firebase-config.js
@@ -458,30 +617,37 @@ Semana 1
 1. Estructura de archivos HTML/CSS/JS
 2. Integracion Firebase Auth
 3. Registro/login funcional
+4. Base responsive mobile-first en layouts clave
 
 Semana 2
 1. CRUD de perfil contratista
-2. Crear y listar reseñas
+2. Crear y listar calificaciones privadas
 3. Catalogo de trabajos con varias imagenes
+4. Bandeja de mensajes cliente-contratista (MVP)
 
 Semana 3
 1. Referencias de clientes por trabajo
 2. Planes de suscripcion y limites por plan
 3. Reglas de seguridad basicas + despliegue en GitHub Pages
+4. Bot de ayuda con FAQ guiada
 
 Semana 4
 1. Dashboard admin separado
 2. Gestion de roles y usuarios
-3. Seed demo desde interfaz admin
+3. Moderacion de mensajes/calificaciones + seed demo desde interfaz admin
+4. QA responsive en moviles reales y emuladores
 
 ## Limitaciones actuales (MVP)
 - Sin chat en tiempo real.
 - Pagos en linea en fase inicial (sin facturacion avanzada).
 - El admin designado por email es una solucion practica para MVP (ideal migrar luego a custom claims con backend).
 - Las imagenes del catalogo se manejan por URL externa (sin carga binaria directa desde la app).
+- El bot de ayuda en MVP usa FAQ guiada (sin NLP avanzado).
 
 ## Escalado futuro
 1. Agregar Cloud Functions para validaciones de negocio.
 2. Agregar Storage para fotos de proyectos.
 3. Integrar webhooks de pasarela para confirmar pagos automaticamente.
 4. Agregar busqueda avanzada y paginacion.
+5. Evolucionar mensajeria a chat en tiempo real con notificaciones push.
+6. Evolucionar bot de ayuda a asistente inteligente con contexto de usuario.

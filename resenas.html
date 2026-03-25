@@ -48,7 +48,11 @@
   </header>
 
   <main class="container">
-    <section class="card">
+    <section id="reviewsAccessNotice" class="card" hidden>
+      <p>Acceso restringido. Debes iniciar sesion con una cuenta autorizada.</p>
+    </section>
+
+    <section class="card" data-protected="reviews">
       <h1>Resenas de trabajos</h1>
       <form id="reviewForm" class="grid form-grid">
         <input id="contractorId" type="text" placeholder="ID del contratista" required />
@@ -61,10 +65,11 @@
         <textarea id="comentario" rows="4" placeholder="Comentario (opcional)"></textarea>
         <button class="btn" type="submit">Publicar resena</button>
       </form>
+      <p id="reviewFormNotice" class="form-message" hidden></p>
       <p id="reviewMessage" class="form-message"></p>
     </section>
 
-    <section class="card">
+    <section class="card" data-protected="reviews">
       <h2>Ultimas resenas</h2>
       <div id="reviewsList" class="stack"></div>
     </section>
