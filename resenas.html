@@ -53,8 +53,12 @@
       <form id="reviewForm" class="grid form-grid">
         <input id="contractorId" type="text" placeholder="ID del contratista" required />
         <input id="jobId" type="text" placeholder="ID del trabajo" required />
-        <input id="estrellas" type="number" min="1" max="5" placeholder="Estrellas (1-5)" required />
-        <textarea id="comentario" rows="4" placeholder="Comentario" required></textarea>
+        <div>
+          <label for="estrellas">Calificación:</label>
+          <div id="starsContainer"></div>
+          <input id="estrellas" type="hidden" value="0" />
+        </div>
+        <textarea id="comentario" rows="4" placeholder="Comentario (opcional)"></textarea>
         <button class="btn" type="submit">Publicar resena</button>
       </form>
       <p id="reviewMessage" class="form-message"></p>

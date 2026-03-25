@@ -14,6 +14,7 @@ import {
 import { auth, db } from "./firebase-config.js";
 import { asMessage, notifyError, notifySuccess } from "./validators.js";
 import { initAuthUserMenu, initMobileNav } from "./nav.js";
+import { renderInteractiveStars, renderStars } from "./review-manager.js";
 
 const form = document.getElementById("reviewForm");
 const message = document.getElementById("reviewMessage");
@@ -21,6 +22,48 @@ const listEl = document.getElementById("reviewsList");
 
 initMobileNav();
 initAuthUserMenu();
+
+const starsContainer = document.getElementById("starsContainer");
+if (starsContainer) {
+  starsContainer.innerHTML = renderInteractiveStars();
+  setupStarSelection();
+}
+
+function setupStarSelection() {
+  const starBtns = document.querySelectorAll("#starsContainer .star-btn");
+  const estrellasInput = document.getElementById("estrellas");
+
+  starBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const value = Number(btn.dataset.value);
+      estrellasInput.value = value;
+
+      // Actualizar visualización
+      starBtns.forEach((b, i) => {
+        if (i < value) {
+          b.classList.add("selected");
+        } else {
+          b.classList.remove("selected");
+        }
+      });
+    });
+
+    btn.addEventListener("mouseenter", () => {
+      const value = Number(btn.dataset.value);
+      starBtns.forEach((b, i) => {
+        if (i < value) {
+          b.classList.add("hovered");
+        } else {
+          b.classList.remove("hovered");
+        }
+      });
+    });
+
+    btn.addEventListener("mouseleave", () => {
+      starBtns.forEach((b) => b.classList.remove("hovered"));
+    });
+  });
+}
 
 async function refreshReviews() {
   if (!listEl) return;
@@ -37,12 +80,13 @@ async function refreshReviews() {
     const rows = [];
     snap.forEach((item) => {
       const r = item.data();
+      const commentHtml = r.comentario ? `<p>${r.comentario}</p>` : '';
       rows.push(`
         <article class="card">
           <p><strong>Contratista:</strong> ${r.contractorId}</p>
           <p><strong>Trabajo:</strong> ${r.jobId}</p>
-          <p><strong>Estrellas:</strong> ${r.estrellas}</p>
-          <p>${r.comentario}</p>
+          <p><strong>Estrellas:</strong> ${renderStars(r.estrellas)}</p>
+          ${commentHtml}
         </article>
       `);
     });
@@ -113,6 +157,8 @@ if (form) {
     }
   });
 }
+
+refreshReviews();
 
 onAuthStateChanged(auth, () => {
   refreshReviews();
