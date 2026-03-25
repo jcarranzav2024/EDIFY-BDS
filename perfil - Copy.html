@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi Perfil | Edify BDS</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./index.html">
+      <img class="brand-logo" src="./img/Logo.ico.png" alt="Logo EdifyBDS" />
+      <span class="brand-name">Edify BDS</span>
+    </a>
+    <button
+      id="menuToggle"
+      class="menu-toggle"
+      type="button"
+      aria-label="Abrir menu"
+      aria-controls="mainNav"
+      aria-expanded="false"
+    >
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <nav id="mainNav" class="site-nav">
+      <a href="./index.html">Inicio</a>
+      <a href="./contratistas.html">Contratistas</a>
+      <a href="./resenas.html">Resenas</a>
+      <div id="userMenu" class="user-menu" hidden>
+        <button
+          id="userGreeting"
+          class="nav-user user-menu-toggle"
+          type="button"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-controls="userMenuPanel"
+        ></button>
+        <div id="userMenuPanel" class="user-menu-panel" hidden>
+          <a id="userMenuProfileLink" class="user-menu-item" href="./perfil.html">Mi perfil</a>
+          <a id="userMenuAdminLink" class="user-menu-item" href="./admin-dashboard.html" hidden>Dashboard admin</a>
+          <button id="userMenuLogoutBtn" class="user-menu-item" type="button">Cerrar sesion</button>
+        </div>
+      </div>
+      <a id="loginNavLink" href="./login.html">Login</a>
+      <a id="registerNavLink" href="./registro.html" class="btn small">Registro</a>
+    </nav>
+  </header>
+
+  <main class="container profile-container profile-stack">
+    <section class="card">
+      <h1>Mi perfil</h1>
+      <p id="userRoleInfo" class="role-info">Rol actual: <strong id="userRoleBadge">Invitado</strong></p>
+      <form id="userProfileForm" class="grid form-grid">
+        <input id="userNombre" type="text" placeholder="Nombre completo" required />
+        <input id="userEmail" type="email" placeholder="Correo" readonly />
+        <input id="userCedula" type="text" placeholder="Cedula" />
+        <input id="userTelefono" type="text" placeholder="Telefono" />
+        <select id="userZona">
+          <option value="">Selecciona tu provincia</option>
+          <option value="San Jose">San Jose</option>
+          <option value="Alajuela">Alajuela</option>
+          <option value="Cartago">Cartago</option>
+          <option value="Heredia">Heredia</option>
+          <option value="Guanacaste">Guanacaste</option>
+          <option value="Puntarenas">Puntarenas</option>
+          <option value="Limon">Limon</option>
+        </select>
+        <button class="btn" type="submit">Guardar mis datos</button>
+      </form>
+      <p id="userProfileMessage" class="form-message"></p>
+    </section>
+
+    <section id="contractorProfileSection" class="card">
+      <h2>Perfil profesional de contratista</h2>
+      <p id="roleNotice" class="notice" hidden></p>
+      <form id="profileForm" class="grid form-grid">
+        <input id="nombreVisible" type="text" placeholder="Nombre visible" required />
+        <input id="especialidad" type="text" placeholder="Especialidad" required />
+        <input id="servicios" type="text" placeholder="Servicios que ofreces (ej: electricidad, pintura, soldadura)" required />
+        <select id="zona" required>
+          <option value="">Selecciona tu provincia</option>
+          <option value="San Jose">San Jose</option>
+          <option value="Alajuela">Alajuela</option>
+          <option value="Cartago">Cartago</option>
+          <option value="Heredia">Heredia</option>
+          <option value="Guanacaste">Guanacaste</option>
+          <option value="Puntarenas">Puntarenas</option>
+          <option value="Limon">Limon</option>
+        </select>
+        <textarea id="descripcion" rows="4" placeholder="Descripcion"></textarea>
+        <button class="btn" type="submit">Guardar perfil</button>
+      </form>
+      <p id="profileMessage" class="form-message"></p>
+    </section>
+
+    <section id="contractorCatalogSection" class="card">
+      <h2>Mi catalogo de trabajos</h2>
+      <div class="inline-actions">
+        <button id="openPortfolioModalBtn" class="btn" type="button">Nuevo trabajo</button>
+      </div>
+      <p id="portfolioMessage" class="form-message"></p>
+      <div id="portfolioList" class="portfolio-grid"></div>
+    </section>
+
+    <section id="subscriptionSection" class="card">
+      <h2>Mi suscripcion</h2>
+      <div id="subscriptionInfo" class="stack"></div>
+      <p>Proximamente: selector de plan Gratis, Basico, Intermedio y Premium.</p>
+    </section>
+  </main>
+
+  <div id="portfolioModal" class="app-modal" hidden>
+    <div id="portfolioModalBackdrop" class="app-modal-backdrop" data-close-modal="true"></div>
+    <section id="portfolioModalDialog" class="app-modal-dialog card" role="dialog" aria-modal="true" aria-labelledby="portfolioModalTitle">
+      <div class="app-modal-header">
+        <h3 id="portfolioModalTitle">Nuevo trabajo</h3>
+        <button id="portfolioModalCloseBtn" class="btn secondary" type="button" aria-label="Cerrar">X</button>
+      </div>
+      <form id="portfolioForm" class="grid form-grid">
+        <input id="portfolioTitulo" type="text" placeholder="Titulo del trabajo" required />
+        <input id="portfolioFecha" type="date" required />
+        <textarea id="portfolioDescripcion" rows="3" placeholder="Descripcion del trabajo" required></textarea>
+        <textarea id="portfolioImagenes" rows="4" placeholder="Pega URLs de imagen, una por linea"></textarea>
+        <div class="inline-actions">
+          <button id="portfolioSaveBtn" class="btn" type="submit">Guardar trabajo</button>
+          <button id="portfolioCancelEditBtn" class="btn secondary" type="button" hidden>Cancelar edicion</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <script type="module" src="./js/contractors.js"></script>
+</body>
+</html>

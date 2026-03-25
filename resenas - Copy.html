@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resenas | Edify BDS</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./index.html">
+      <img class="brand-logo" src="./img/Logo.ico.png" alt="Logo EdifyBDS" />
+      <span class="brand-name">Edify BDS</span>
+    </a>
+    <button
+      id="menuToggle"
+      class="menu-toggle"
+      type="button"
+      aria-label="Abrir menu"
+      aria-controls="mainNav"
+      aria-expanded="false"
+    >
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <nav id="mainNav" class="site-nav">
+      <a href="./index.html">Inicio</a>
+      <a href="./contratistas.html">Contratistas</a>
+      <div id="userMenu" class="user-menu" hidden>
+        <button
+          id="userGreeting"
+          class="nav-user user-menu-toggle"
+          type="button"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-controls="userMenuPanel"
+        ></button>
+        <div id="userMenuPanel" class="user-menu-panel" hidden>
+          <a id="userMenuProfileLink" class="user-menu-item" href="./perfil.html">Mi perfil</a>
+          <a id="userMenuAdminLink" class="user-menu-item" href="./admin-dashboard.html" hidden>Dashboard admin</a>
+          <button id="userMenuLogoutBtn" class="user-menu-item" type="button">Cerrar sesion</button>
+        </div>
+      </div>
+      <a id="loginNavLink" href="./login.html">Login</a>
+      <a id="registerNavLink" href="./registro.html" class="btn small">Registro</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h1>Resenas de trabajos</h1>
+      <form id="reviewForm" class="grid form-grid">
+        <input id="contractorId" type="text" placeholder="ID del contratista" required />
+        <input id="jobId" type="text" placeholder="ID del trabajo" required />
+        <input id="estrellas" type="number" min="1" max="5" placeholder="Estrellas (1-5)" required />
+        <textarea id="comentario" rows="4" placeholder="Comentario" required></textarea>
+        <button class="btn" type="submit">Publicar resena</button>
+      </form>
+      <p id="reviewMessage" class="form-message"></p>
+    </section>
+
+    <section class="card">
+      <h2>Ultimas resenas</h2>
+      <div id="reviewsList" class="stack"></div>
+    </section>
+  </main>
+
+  <script type="module" src="./js/reviews.js"></script>
+</body>
+</html>

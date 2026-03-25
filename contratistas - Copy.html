@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contratistas | Edify BDS</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./index.html">
+      <img class="brand-logo" src="./img/Logo.ico.png" alt="Logo EdifyBDS" />
+      <span class="brand-name">Edify BDS</span>
+    </a>
+    <button
+      id="menuToggle"
+      class="menu-toggle"
+      type="button"
+      aria-label="Abrir menu"
+      aria-controls="mainNav"
+      aria-expanded="false"
+    >
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <nav id="mainNav" class="site-nav">
+      <a href="./index.html">Inicio</a>
+      <a href="./resenas.html">Resenas</a>
+      <div id="userMenu" class="user-menu" hidden>
+        <button
+          id="userGreeting"
+          class="nav-user user-menu-toggle"
+          type="button"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-controls="userMenuPanel"
+        ></button>
+        <div id="userMenuPanel" class="user-menu-panel" hidden>
+          <a id="userMenuProfileLink" class="user-menu-item" href="./perfil.html">Mi perfil</a>
+          <a id="userMenuAdminLink" class="user-menu-item" href="./admin-dashboard.html" hidden>Dashboard admin</a>
+          <button id="userMenuLogoutBtn" class="user-menu-item" type="button">Cerrar sesion</button>
+        </div>
+      </div>
+      <a id="loginNavLink" href="./login.html">Login</a>
+      <a id="registerNavLink" href="./registro.html" class="btn small">Registro</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card filter-section">
+      <h1 style="margin-top: 0;">🏢 Directorio de Contratistas</h1>
+      <p style="color: var(--muted); font-size: 0.95rem; margin-bottom: 16px;">Encuentra y conecta con los mejores contratistas de tu zona</p>
+      <div class="grid filters">
+        <input id="filterEspecialidad" type="text" placeholder="🔍 Filtrar por especialidad" />
+        <input id="filterZona" type="text" placeholder="📍 Filtrar por zona" />
+        <button id="filterBtn" class="btn" type="button">Aplicar filtros</button>
+      </div>
+      <p id="requestMessage" class="form-message"></p>
+    </section>
+
+    <section id="contractorsList" class="grid cards-3"></section>
+  </main>
+
+  <!-- Modal de detalles del contratista -->
+  <div id="contractorDetailModal" class="modal" hidden>
+    <div id="contractorDetailBackdrop" class="modal-backdrop"></div>
+    <dialog id="contractorDetailDialog" class="modal-dialog" open>
+      <div class="modal-header">
+        <h2 id="contractorDetailName">Nombre del contratista</h2>
+        <button id="contractorDetailCloseBtn" class="modal-close" type="button" aria-label="Cerrar">×</button>
+      </div>
+      <div class="modal-body">
+        <!-- Información básica -->
+        <div id="contractorDetailInfo" style="margin-bottom: 24px; padding: 16px; background: linear-gradient(135deg, rgba(45, 154, 215, 0.05) 0%, rgba(87, 181, 71, 0.05) 100%); border-radius: 12px; border-left: 4px solid var(--primary);">
+          <p style="margin: 8px 0;"><strong>🏢 Especialidad:</strong> <span id="contractorDetailEspecialidad" style="color: var(--primary); font-weight: 600;"></span></p>
+          <p style="margin: 8px 0;"><strong>🔧 Servicios:</strong> <span id="contractorDetailServicios"></span></p>
+          <p style="margin: 8px 0;"><strong>📍 Zona:</strong> <span id="contractorDetailZona"></span></p>
+          <p style="margin: 12px 0 0; font-style: italic; color: var(--muted);"><strong>Descripción:</strong> <br><span id="contractorDetailDescripcion" style="color: var(--text);"></span></p>
+        </div>
+
+        <!-- Rating -->
+        <div style="margin-bottom: 24px; padding: 20px 16px; background: linear-gradient(135deg, rgba(255, 200, 71, 0.12) 0%, rgba(255, 200, 71, 0.06) 100%); border-radius: 12px; border-left: 5px solid #ffc847; text-align: center;">
+          <p style="margin: 0 0 10px; font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700;"><strong>⭐ Calificación</strong></p>
+          <div style="padding: 12px 0;"><span id="contractorDetailRating" style="display: block;"></span></div>
+          <span id="contractorDetailTotalReviews" style="font-size: 0.8rem; color: var(--muted); display: block; margin-top: 8px;"></span>
+        </div>
+
+        <!-- Galería de trabajos -->
+        <div id="contractorDetailPortfolio" style="margin-bottom: 24px; display: none;">
+          <h4 style="margin: 0 0 12px; padding-bottom: 10px; border-bottom: 2px solid var(--border); color: var(--text); font-size: 1.05rem;">🖼️ Trabajos realizados</h4>
+          <div id="contractorDetailGallery" class="gallery-grid"></div>
+        </div>
+
+        <!-- Divisor -->
+        <div style="height: 1px; background: linear-gradient(90deg, transparent, var(--border), transparent); margin: 24px 0;"></div>
+
+        <!-- Botones de acción ordenados -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+          <button 
+            id="contractorDetailViewReviewsBtn" 
+            class="btn" 
+            type="button"
+            title="Ver todas las reseñas"
+          >
+            👁️ Ver reseñas
+          </button>
+          <button 
+            id="contractorDetailLeaveReviewBtn" 
+            class="btn" 
+            type="button"
+            title="Dejar tu opinión"
+          >
+            ⭐ Dejar reseña
+          </button>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+          <button 
+            id="contractorDetailContactBtn" 
+            class="btn primary" 
+            type="button"
+            title="Contactar al contratista"
+            style="width: 100%;"
+          >
+            📞 Contactar
+          </button>
+        </div>
+
+        <!-- Opciones de contacto directo (si está disponible) -->
+        <div id="contractorDetailContactOptions" style="display: none; padding: 16px; background: linear-gradient(135deg, rgba(87, 181, 71, 0.08) 0%, rgba(87, 181, 71, 0.04) 100%); border-radius: 10px; border-left: 4px solid var(--accent); margin-bottom: 10px;">
+          <p style="margin: 0 0 12px; font-size: 0.9rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;"><strong>📱 Contacto directo</strong></p>
+          <div id="contractorDetailContactButtonsContainer" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+        </div>
+      </div>
+    </dialog>
+  </div>
+
+  <!-- Modal de reseña -->
+  <div id="reviewModal" class="modal" hidden>
+    <div id="reviewModalBackdrop" class="modal-backdrop"></div>
+    <dialog id="reviewModalDialog" class="modal-dialog" open>
+      <div class="modal-header">
+        <h2 id="reviewModalTitle">Dejar reseña</h2>
+        <button id="reviewModalCloseBtn" class="modal-close" type="button" aria-label="Cerrar">×</button>
+      </div>
+      <div class="modal-body">
+        <p id="reviewInfoText" class="info-text"></p>
+        
+        <form id="reviewForm" class="form-grid">
+          <div class="form-group">
+            <label for="reviewStars">Calificación:</label>
+            <div id="reviewStarsContainer"></div>
+            <input id="reviewStars" type="hidden" value="0" />
+          </div>
+
+          <div class="form-group">
+            <label for="reviewComment">Tu opinión (opcional):</label>
+            <textarea 
+              id="reviewComment" 
+              rows="5" 
+              placeholder="Comparte tu experiencia con este contratista (opcional)..."
+            ></textarea>
+            <small id="charCount" style="color: var(--muted);"></small>
+          </div>
+
+          <input id="reviewContractorId" type="hidden" />
+          <input id="reviewJobId" type="hidden" />
+          
+          <div class="form-actions">
+            <button id="reviewSubmitBtn" class="btn" type="submit">Publicar reseña</button>
+            <button id="reviewCancelBtn" class="btn secondary" type="button">Cancelar</button>
+          </div>
+        </form>
+        
+        <p id="reviewMessage" class="form-message"></p>
+      </div>
+    </dialog>
+  </div>
+
+  <!-- Modal para ver todas las reseñas -->
+  <div id="viewReviewsModal" class="modal" hidden>
+    <div id="viewReviewsModalBackdrop" class="modal-backdrop"></div>
+    <dialog id="viewReviewsModalDialog" class="modal-dialog" open>
+      <div class="modal-header">
+        <h2 id="viewReviewsModalTitle">Reseñas del contratista</h2>
+        <button id="viewReviewsModalCloseBtn" class="modal-close" type="button" aria-label="Cerrar">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="viewReviewsContainer" style="max-height: 500px; overflow-y: auto;">
+          <!-- Las reseñas se cargarán aquí -->
+        </div>
+      </div>
+    </dialog>
+  </div>
+
+  <script type="module" src="./js/contractors.js"></script>
+</body>
+</html>
