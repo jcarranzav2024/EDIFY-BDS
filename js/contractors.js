@@ -6,9 +6,11 @@ import {
   getDoc,
   getDocs,
   limit,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth, db } from "./firebase-config.js";
@@ -25,6 +27,7 @@ import {
   getMyPortfolioJobs,
   updatePortfolioJob
 } from "./portfolio.js";
+import { initHelpBot } from "./help-bot.js";
 
 const listEl = document.getElementById("contractorsList");
 const filterBtn = document.getElementById("filterBtn");
@@ -59,6 +62,18 @@ const portfolioCancelEditBtn = document.getElementById("portfolioCancelEditBtn")
 
 const requestMessage = document.getElementById("requestMessage");
 
+const messageModal = document.getElementById("messageModal");
+const messageModalBackdrop = document.getElementById("messageModalBackdrop");
+const messageModalCloseBtn = document.getElementById("messageModalCloseBtn");
+const messageForm = document.getElementById("messageForm");
+const messageContractorId = document.getElementById("messageContractorId");
+const messageSubject = document.getElementById("messageSubject");
+const messageBody = document.getElementById("messageBody");
+
+const contractorMessagesSection = document.getElementById("contractorMessagesSection");
+const contractorMessagesNotice = document.getElementById("contractorMessagesNotice");
+const contractorMessagesList = document.getElementById("contractorMessagesList");
+
 let currentUser = null;
 let currentRole = "guest";
 let editingPortfolioId = null;
@@ -76,6 +91,7 @@ let viewerIndex = 0;
 
 initMobileNav();
 initAuthUserMenu();
+initHelpBot();
 
 async function getCurrentUserRole(user) {
   if (!user) return "guest";
@@ -182,6 +198,38 @@ function setPortfolioModalOpen(isOpen) {
       portfolioTitulo?.focus();
     }, 0);
   }
+}
+
+function setMessageModalOpen(isOpen) {
+  if (!messageModal) return;
+  messageModal.hidden = !isOpen;
+  document.body.style.overflow = isOpen ? "hidden" : "";
+  if (isOpen) {
+    window.setTimeout(() => {
+      messageSubject?.focus();
+    }, 0);
+  }
+}
+
+function setRequestMessage(text, isError = false) {
+  if (!requestMessage) return;
+  requestMessage.textContent = text;
+  requestMessage.classList.toggle("error", isError);
+  if (isError) {
+    notifyError(text);
+  } else {
+    notifyInfo(text);
+  }
+}
+
+function formatDate(value) {
+  if (!value) return "Sin fecha";
+  const date = value?.toDate?.() || new Date(value);
+  if (Number.isNaN(date.getTime())) return "Sin fecha";
+  return date.toLocaleString("es-CR", {
+    dateStyle: "short",
+    timeStyle: "short"
+  });
 }
 
 function setImageViewerOpen(isOpen) {
@@ -496,7 +544,8 @@ async function loadContractors(filters = {}) {
           <p><strong>Zona:</strong> ${data.zona || "N/A"}</p>
           <p>${data.descripcion || "Sin descripcion"}</p>
           <p><strong>Rating:</strong> ${data.ratingPromedio || 0} (${data.totalResenas || 0} resenas)</p>
-          ${canRequest ? `<button class="btn action-btn request-service-btn" type="button" data-contractor-id="${item.id}" data-servicio="${data.servicios || data.especialidad || "Servicio general"}">Solicitar servicio</button>` : ""}
+          ${canRequest ? `<button class="btn action-btn send-message-btn" type="button" data-contractor-id="${item.id}" data-servicio="${data.servicios || data.especialidad || "Servicio general"}">Contactar contratista</button>` : ""}
+          <button class="btn secondary action-btn view-reviews-btn" type="button" data-contractor-id="${item.id}">Ver resenas</button>
         </article>
       `);
     });
@@ -504,6 +553,77 @@ async function loadContractors(filters = {}) {
     listEl.innerHTML = cards.length ? cards.join("") : "<p>No hay contratistas para ese filtro.</p>";
   } catch (error) {
     listEl.innerHTML = `<p>Error cargando contratistas: ${asMessage(error)}</p>`;
+  }
+}
+
+async function loadRepliesForMessage(messageId) {
+  const repliesQ = query(
+    collection(db, "contractor_messages", messageId, "replies"),
+    orderBy("createdAt", "asc"),
+    limit(100)
+  );
+  const repliesSnap = await getDocs(repliesQ);
+  return repliesSnap.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+async function loadContractorInbox() {
+  if (!contractorMessagesList || !currentUser || currentRole !== "contratista") return;
+
+  contractorMessagesList.innerHTML = "<p>Cargando mensajes...</p>";
+  if (contractorMessagesNotice) {
+    contractorMessagesNotice.hidden = false;
+    contractorMessagesNotice.textContent = "Solo tu, el cliente remitente y admin pueden ver este contenido.";
+  }
+
+  try {
+    const inboxQ = query(
+      collection(db, "contractor_messages"),
+      where("contractorId", "==", currentUser.uid),
+      orderBy("createdAt", "desc"),
+      limit(60)
+    );
+
+    const inboxSnap = await getDocs(inboxQ);
+    if (inboxSnap.empty) {
+      contractorMessagesList.innerHTML = "<p>No tienes mensajes de clientes por ahora.</p>";
+      return;
+    }
+
+    const rows = await Promise.all(inboxSnap.docs.map(async (msgDoc) => {
+      const data = msgDoc.data();
+      const replies = await loadRepliesForMessage(msgDoc.id);
+      const replyHtml = replies.length
+        ? replies.map((reply) => {
+          const who = reply.senderRole === "contratista" ? "Tu" : "Cliente";
+          return `
+            <p class="message-reply-row"><strong>${who}:</strong> ${escapeHtml(reply.message || "")}</p>
+          `;
+        }).join("")
+        : "<p class=\"message-reply-row\">Aun no hay respuestas.</p>";
+
+      return `
+        <article class="card contractor-message-item" data-message-id="${msgDoc.id}">
+          <h3>Cliente: ${escapeHtml(data.clientId || "N/A")}</h3>
+          <p><strong>Asunto:</strong> ${escapeHtml(data.subject || "Sin asunto")}</p>
+          <p>${escapeHtml(data.message || "")}</p>
+          <p><strong>Estado:</strong> ${escapeHtml(data.status || "nuevo")}</p>
+          <p><strong>Recibido:</strong> ${formatDate(data.createdAt)}</p>
+          <div class="message-replies">${replyHtml}</div>
+          <form class="grid form-grid contractor-reply-form" data-message-id="${msgDoc.id}">
+            <textarea class="contractor-reply-input" rows="3" placeholder="Responder al cliente" required></textarea>
+            <button class="btn" type="submit">Responder</button>
+          </form>
+          <div class="inline-actions">
+            <button class="btn secondary mark-read-btn" type="button" data-mark-read-id="${msgDoc.id}">Marcar leido</button>
+            <button class="btn secondary close-thread-btn" type="button" data-close-id="${msgDoc.id}">Cerrar hilo</button>
+          </div>
+        </article>
+      `;
+    }));
+
+    contractorMessagesList.innerHTML = rows.join("");
+  } catch (error) {
+    contractorMessagesList.innerHTML = `<p>No se pudo cargar la bandeja: ${asMessage(error)}</p>`;
   }
 }
 
@@ -697,6 +817,62 @@ if (portfolioModalCloseBtn) {
   });
 }
 
+if (messageModalCloseBtn) {
+  messageModalCloseBtn.addEventListener("click", () => {
+    setMessageModalOpen(false);
+  });
+}
+
+if (messageModalBackdrop) {
+  messageModalBackdrop.addEventListener("click", () => {
+    setMessageModalOpen(false);
+  });
+}
+
+if (messageForm) {
+  messageForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (!currentUser) {
+      setRequestMessage("Debes iniciar sesion para enviar mensajes.", true);
+      return;
+    }
+
+    if (!["cliente", "admin"].includes(currentRole)) {
+      setRequestMessage("Solo clientes registrados pueden enviar mensajes a contratistas.", true);
+      return;
+    }
+
+    const contractorId = (messageContractorId?.value || "").trim();
+    const subject = (messageSubject?.value || "").trim();
+    const body = (messageBody?.value || "").trim();
+
+    if (!contractorId || !subject || !body) {
+      setRequestMessage("Completa contratista, asunto y mensaje.", true);
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, "contractor_messages"), {
+        contractorId,
+        clientId: currentUser.uid,
+        subject,
+        message: body,
+        status: "nuevo",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      messageForm.reset();
+      if (messageContractorId) messageContractorId.value = contractorId;
+      setMessageModalOpen(false);
+      setRequestMessage("Mensaje enviado correctamente al contratista.");
+    } catch (error) {
+      setRequestMessage(`No se pudo enviar el mensaje: ${asMessage(error)}`, true);
+    }
+  });
+}
+
 if (portfolioModal) {
   if (portfolioModalDialog) {
     portfolioModalDialog.addEventListener("click", (event) => {
@@ -774,22 +950,45 @@ if (portfolioList) {
 
 if (listEl) {
   listEl.addEventListener("click", async (event) => {
+    const reviewsBtn = event.target.closest(".view-reviews-btn");
+    if (reviewsBtn) {
+      const contractorId = reviewsBtn.dataset.contractorId;
+      const query = contractorId ? `?contractorId=${encodeURIComponent(contractorId)}` : "";
+      window.location.href = `./resenas.html${query}`;
+      return;
+    }
+
+    const messageBtn = event.target.closest(".send-message-btn");
+    if (messageBtn) {
+      if (!currentUser) {
+        setRequestMessage("Debes iniciar sesion como cliente para contactar contratistas.", true);
+        return;
+      }
+
+      if (!["cliente", "admin"].includes(currentRole)) {
+        setRequestMessage("Solo cuentas de cliente registradas pueden enviar mensajes.", true);
+        return;
+      }
+
+      const contractorId = messageBtn.dataset.contractorId;
+      const servicio = messageBtn.dataset.servicio || "Servicio";
+      if (messageContractorId) messageContractorId.value = contractorId;
+      if (messageSubject) messageSubject.value = `Consulta sobre ${servicio}`;
+      if (messageBody) messageBody.value = "";
+      setMessageModalOpen(true);
+      return;
+    }
+
     const btn = event.target.closest(".request-service-btn");
     if (!btn) return;
 
     if (!currentUser) {
-      if (requestMessage) {
-        requestMessage.textContent = "Debes iniciar sesion como cliente para solicitar un servicio.";
-        requestMessage.classList.add("error");
-      }
+      setRequestMessage("Debes iniciar sesion como cliente para solicitar un servicio.", true);
       return;
     }
 
     if (!["cliente", "admin"].includes(currentRole)) {
-      if (requestMessage) {
-        requestMessage.textContent = "Solo un usuario cliente o admin puede solicitar servicios.";
-        requestMessage.classList.add("error");
-      }
+      setRequestMessage("Solo un usuario cliente o admin puede solicitar servicios.", true);
       return;
     }
 
@@ -807,15 +1006,83 @@ if (listEl) {
         createdAt: serverTimestamp()
       });
 
-      if (requestMessage) {
-        requestMessage.textContent = "Solicitud enviada correctamente al contratista.";
-        requestMessage.classList.remove("error");
-      }
+      setRequestMessage("Solicitud enviada correctamente al contratista.");
     } catch (error) {
-      if (requestMessage) {
-        requestMessage.textContent = `No se pudo enviar la solicitud: ${asMessage(error)}`;
-        requestMessage.classList.add("error");
+      setRequestMessage(`No se pudo enviar la solicitud: ${asMessage(error)}`, true);
+    }
+  });
+}
+
+if (contractorMessagesList) {
+  contractorMessagesList.addEventListener("submit", async (event) => {
+    const formEl = event.target.closest(".contractor-reply-form");
+    if (!formEl) return;
+
+    event.preventDefault();
+
+    if (!currentUser || currentRole !== "contratista") {
+      notifyError("Solo cuentas de contratista pueden responder mensajes.");
+      return;
+    }
+
+    const messageId = formEl.dataset.messageId;
+    const input = formEl.querySelector(".contractor-reply-input");
+    const text = (input?.value || "").trim();
+    if (!text) {
+      notifyError("Escribe una respuesta antes de enviar.");
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, "contractor_messages", messageId, "replies"), {
+        senderId: currentUser.uid,
+        senderRole: "contratista",
+        message: text,
+        createdAt: serverTimestamp()
+      });
+
+      await updateDoc(doc(db, "contractor_messages", messageId), {
+        status: "respondido",
+        updatedAt: serverTimestamp()
+      });
+
+      notifySuccess("Respuesta enviada al cliente.");
+      await loadContractorInbox();
+    } catch (error) {
+      notifyError(`No se pudo enviar la respuesta: ${asMessage(error)}`);
+    }
+  });
+
+  contractorMessagesList.addEventListener("click", async (event) => {
+    const markReadBtn = event.target.closest(".mark-read-btn");
+    if (markReadBtn) {
+      const messageId = markReadBtn.dataset.markReadId;
+      try {
+        await updateDoc(doc(db, "contractor_messages", messageId), {
+          status: "leido",
+          updatedAt: serverTimestamp()
+        });
+        notifySuccess("Mensaje marcado como leido.");
+        await loadContractorInbox();
+      } catch (error) {
+        notifyError(`No se pudo actualizar estado: ${asMessage(error)}`);
       }
+      return;
+    }
+
+    const closeBtn = event.target.closest(".close-thread-btn");
+    if (!closeBtn) return;
+
+    const messageId = closeBtn.dataset.closeId;
+    try {
+      await updateDoc(doc(db, "contractor_messages", messageId), {
+        status: "cerrado",
+        updatedAt: serverTimestamp()
+      });
+      notifySuccess("Hilo cerrado.");
+      await loadContractorInbox();
+    } catch (error) {
+      notifyError(`No se pudo cerrar hilo: ${asMessage(error)}`);
     }
   });
 }
@@ -829,6 +1096,10 @@ onAuthStateChanged(auth, async (user) => {
   currentRole = await getCurrentUserRole(user);
 
   setProfileAvailabilityByRole();
+
+  if (contractorMessagesSection) {
+    contractorMessagesSection.hidden = currentRole !== "contratista";
+  }
 
   if (user) {
     await loadUserProfileData(user);
@@ -855,9 +1126,14 @@ onAuthStateChanged(auth, async (user) => {
   if (user && currentRole === "contratista") {
     if (openPortfolioModalBtn) openPortfolioModalBtn.disabled = false;
     await loadPortfolioJobs();
+    await loadContractorInbox();
   } else if (portfolioList) {
     if (openPortfolioModalBtn) openPortfolioModalBtn.disabled = true;
     setPortfolioModalOpen(false);
     portfolioList.innerHTML = "<p>Solo cuentas de contratista pueden gestionar catalogo.</p>";
+  }
+
+  if (contractorMessagesList && currentRole !== "contratista") {
+    contractorMessagesList.innerHTML = "";
   }
 });

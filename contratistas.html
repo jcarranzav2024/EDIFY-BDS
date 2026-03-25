@@ -61,6 +61,22 @@
     <section id="contractorsList" class="grid cards-3"></section>
   </main>
 
+  <div id="messageModal" class="app-modal" hidden>
+    <div id="messageModalBackdrop" class="app-modal-backdrop" data-close-message-modal="true"></div>
+    <section class="app-modal-dialog card" role="dialog" aria-modal="true" aria-labelledby="messageModalTitle">
+      <div class="app-modal-header">
+        <h3 id="messageModalTitle">Contactar contratista</h3>
+        <button id="messageModalCloseBtn" class="btn secondary" type="button" aria-label="Cerrar">X</button>
+      </div>
+      <form id="messageForm" class="grid form-grid">
+        <input id="messageContractorId" type="text" readonly />
+        <input id="messageSubject" type="text" placeholder="Asunto" required />
+        <textarea id="messageBody" rows="4" placeholder="Describe lo que necesitas" required></textarea>
+        <button class="btn" type="submit">Enviar mensaje</button>
+      </form>
+    </section>
+  </div>
+
   <script type="module" src="./js/contractors.js"></script>
 </body>
 </html>

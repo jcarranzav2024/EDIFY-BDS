@@ -8,7 +8,7 @@ Construir una web sencilla de contratistas con:
 - Publicacion de perfiles de contratistas
 - Catalogo de trabajos anteriores por contratista
 - Calificaciones de 1 a 5 estrellas con comentario opcional
-- Visibilidad privada de calificaciones (solo contratista propietario, admins y clientes autenticados oficiales)
+- Visibilidad de calificaciones para cualquier usuario autenticado (ocultas para visitantes no registrados)
 - Referencias de clientes por trabajo
 - Suscripciones por planes (gratis, basico, intermedio, premium)
 - Mensajeria cliente-contratista (solicitud y respuesta)
@@ -81,7 +81,7 @@ EDIFY-BDS/
 - Cliente autenticado oficial califica contratista con estrellas (1 a 5).
 - Comentario opcional por calificacion.
 - Validacion: una calificacion por cliente y contratista (actualizable por el cliente).
-- Visibilidad de calificaciones: solo contratista propietario, admins y clientes autenticados oficiales.
+- Visibilidad de calificaciones: cualquier usuario autenticado.
 - No se muestran calificaciones a visitantes anonimos.
 
 4. Catalogo de trabajos anteriores
@@ -333,7 +333,7 @@ Documento con ID = nombre del rol
 1. Solo usuarios autenticados oficiales pueden escribir calificaciones.
 2. Solo contratistas pueden editar su perfil profesional y sus trabajos.
 3. Solo clientes autenticados pueden crear referencias y calificaciones.
-4. Lectura de calificaciones restringida a contratista propietario, admin y clientes autenticados oficiales.
+4. Lectura de calificaciones permitida a cualquier usuario autenticado; visitantes anonimos no.
 5. Solo admin puede gestionar roles, planes y usuarios.
 6. Mensajes entre clientes y contratistas visibles solo para participantes y admin.
 7. Bot FAQ de solo lectura publica; edicion solo admin.
@@ -406,12 +406,7 @@ service cloud.firestore {
     }
 
     match /reviews/{reviewId} {
-      allow read: if isAdmin() || (
-        isSignedIn() && (
-          userRole() == "cliente" ||
-          request.auth.uid == resource.data.contractorId
-        )
-      );
+      allow read: if isSignedIn();
 
       allow create: if isSignedIn() && (
         isAdmin() || (
@@ -554,7 +549,7 @@ service cloud.firestore {
 - Cliente autenticado oficial crea/actualiza calificacion en reviews (1 a 5 + comentario opcional).
 - Cliente autenticado crea referencia en client_references.
 - Recalcular ratingPromedio y totalResenas del contratista.
-- La vista de calificaciones queda restringida (contratista propietario, admin y clientes logeados oficiales).
+- La vista de calificaciones queda disponible para cualquier usuario con sesion iniciada.
 
 6. Suscripcion:
 - Contratista selecciona plan (gratis, basico, intermedio, premium).

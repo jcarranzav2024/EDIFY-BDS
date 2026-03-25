@@ -2,6 +2,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/f
 import { auth } from "./firebase-config.js";
 import { logoutUser } from "./auth.js";
 import { initAuthUserMenu, initContactMenu, initMobileNav } from "./nav.js";
+import { initHelpBot } from "./help-bot.js";
 
 const sessionStatus = document.getElementById("sessionStatus");
 const logoutBtn = document.getElementById("logoutBtn");
@@ -10,6 +11,7 @@ const carousel = document.querySelector("[data-carousel]");
 initMobileNav();
 initContactMenu();
 initAuthUserMenu();
+initHelpBot();
 
 onAuthStateChanged(auth, async (user) => {
   if (user) {

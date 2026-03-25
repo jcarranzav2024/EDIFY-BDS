@@ -14,6 +14,7 @@ import {
 import { auth, db } from "./firebase-config.js";
 import { initAuthUserMenu, initMobileNav } from "./nav.js";
 import { asMessage, notifyError, notifyInfo, notifySuccess } from "./validators.js";
+import { initHelpBot } from "./help-bot.js";
 
 const DESIGNATED_ADMIN_EMAIL = "admin@edifybds.com";
 
@@ -39,6 +40,7 @@ let availableRoles = ["cliente", "contratista", "admin"];
 
 initMobileNav();
 initAuthUserMenu();
+initHelpBot();
 
 function getProvince(index) {
   const provinces = ["San Jose", "Alajuela", "Cartago", "Heredia", "Guanacaste", "Puntarenas", "Limon"];

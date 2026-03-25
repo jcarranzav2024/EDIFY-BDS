@@ -13,9 +13,12 @@ import {
   notifyError,
   notifySuccess
 } from "./validators.js";
+import { initHelpBot } from "./help-bot.js";
 
 const loginForm = document.getElementById("loginForm");
 const registerForm = document.getElementById("registerForm");
+
+initHelpBot();
 
 if (loginForm) {
   loginForm.addEventListener("submit", async (event) => {

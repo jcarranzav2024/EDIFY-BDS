@@ -16,6 +16,7 @@ import { auth, db } from "./firebase-config.js";
 import { asMessage, notifyError, notifySuccess } from "./validators.js";
 import { initAuthUserMenu, initMobileNav } from "./nav.js";
 import { renderInteractiveStars, renderStars } from "./review-manager.js";
+import { initHelpBot } from "./help-bot.js";
 
 const form = document.getElementById("reviewForm");
 const message = document.getElementById("reviewMessage");
@@ -24,7 +25,6 @@ const accessNotice = document.getElementById("reviewsAccessNotice");
 const protectedSections = document.querySelectorAll('[data-protected="reviews"]');
 const reviewFormNotice = document.getElementById("reviewFormNotice");
 
-const allowedViewerRoles = new Set(["admin", "contratista", "cliente"]);
 let viewerAuthorized = false;
 let submitAuthorized = false;
 let viewRestrictionMessage = "Debes iniciar sesion con una cuenta autorizada.";
@@ -33,12 +33,22 @@ let starButtons = [];
 
 initMobileNav();
 initAuthUserMenu();
+initHelpBot();
 applyAccessRestrictions();
 
 const starsContainer = document.getElementById("starsContainer");
 if (starsContainer) {
   starsContainer.innerHTML = renderInteractiveStars();
   setupStarSelection();
+}
+
+const urlParams = new URLSearchParams(window.location.search);
+const contractorFromQuery = (urlParams.get("contractorId") || "").trim();
+if (contractorFromQuery) {
+  const contractorInput = document.getElementById("contractorId");
+  if (contractorInput) {
+    contractorInput.value = contractorFromQuery;
+  }
 }
 
 function updateStarSelectionVisual(value) {
@@ -138,36 +148,24 @@ function evaluateAccess(user, role) {
   if (!user) {
     viewerAuthorized = false;
     submitAuthorized = false;
-    viewRestrictionMessage = "Debes iniciar sesion con una cuenta autorizada.";
+    viewRestrictionMessage = "Debes iniciar sesion para ver las calificaciones.";
     formRestrictionMessage = viewRestrictionMessage;
-    return;
-  }
-
-  if (!allowedViewerRoles.has(normalizedRole)) {
-    viewerAuthorized = false;
-    submitAuthorized = false;
-    viewRestrictionMessage = "Tu rol no tiene permisos para ver las resenas.";
-    formRestrictionMessage = viewRestrictionMessage;
-    return;
-  }
-
-  if (normalizedRole === "cliente") {
-    viewerAuthorized = Boolean(user.emailVerified);
-    submitAuthorized = viewerAuthorized;
-    if (!viewerAuthorized) {
-      viewRestrictionMessage = "Debes verificar tu correo para acceder a las resenas.";
-      formRestrictionMessage = viewRestrictionMessage;
-      return;
-    }
-    viewRestrictionMessage = "";
-    formRestrictionMessage = "";
     return;
   }
 
   viewerAuthorized = true;
-  submitAuthorized = false;
-  formRestrictionMessage = "Solo los clientes pueden publicar resenas.";
+  submitAuthorized = normalizedRole === "cliente" && Boolean(user.emailVerified);
+  formRestrictionMessage = submitAuthorized ? "" : "Solo clientes verificados pueden publicar resenas.";
   viewRestrictionMessage = "";
+}
+
+function sanitizeReviewText(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 async function resolveUserRole(user) {
@@ -203,11 +201,12 @@ async function refreshReviews() {
     const rows = [];
     snap.forEach((item) => {
       const r = item.data();
-      const commentHtml = r.comentario ? `<p>${r.comentario}</p>` : '';
+      const safeComment = sanitizeReviewText(r.comentario);
+      const commentHtml = safeComment ? `<p>${safeComment}</p>` : "";
       rows.push(`
         <article class="card">
-          <p><strong>Contratista:</strong> ${r.contractorId}</p>
-          <p><strong>Trabajo:</strong> ${r.jobId}</p>
+          <p><strong>Contratista:</strong> ${sanitizeReviewText(r.contractorId)}</p>
+          <p><strong>Trabajo:</strong> ${sanitizeReviewText(r.jobId)}</p>
           <p><strong>Estrellas:</strong> ${renderStars(r.estrellas)}</p>
           ${commentHtml}
         </article>
