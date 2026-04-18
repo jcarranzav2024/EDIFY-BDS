@@ -25,7 +25,6 @@ import {
   createPortfolioJob,
   deletePortfolioJob,
   getMyPortfolioJobs,
-  uploadPortfolioImages,
   updatePortfolioJob
 } from "./portfolio.js";
 import { initHelpBot } from "./help-bot.js";
@@ -57,9 +56,7 @@ const portfolioModalCloseBtn = document.getElementById("portfolioModalCloseBtn")
 const portfolioTitulo = document.getElementById("portfolioTitulo");
 const portfolioFecha = document.getElementById("portfolioFecha");
 const portfolioDescripcion = document.getElementById("portfolioDescripcion");
-const portfolioImagenesArchivos = document.getElementById("portfolioImagenesArchivos");
-const portfolioReplaceImages = document.getElementById("portfolioReplaceImages");
-const portfolioImagePreview = document.getElementById("portfolioImagePreview");
+const portfolioImagenes = document.getElementById("portfolioImagenes");
 const portfolioSaveBtn = document.getElementById("portfolioSaveBtn");
 const portfolioCancelEditBtn = document.getElementById("portfolioCancelEditBtn");
 
@@ -89,8 +86,6 @@ let currentUser = null;
 let currentRole = "guest";
 let editingPortfolioId = null;
 let myPortfolioJobs = [];
-let selectedPortfolioFiles = [];
-let editingExistingImages = [];
 let contractorsCache = [];
 let selectedContractor = null;
 const userDisplayNameCache = new Map();
@@ -360,54 +355,39 @@ function normalizeImageList(images) {
     .filter(Boolean);
 }
 
-function getFileKey(file) {
-  return `${file.name || "img"}-${file.size || 0}-${file.lastModified || 0}`;
-}
+function parseImageUrls(rawText) {
+  const rawLines = String(rawText || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 
-function addPortfolioFiles(files = []) {
-  const merged = [...selectedPortfolioFiles];
-  const knownKeys = new Set(merged.map((file) => getFileKey(file)));
+  function normalizeImageUrl(line) {
+    const parsed = new URL(line);
 
-  for (const file of Array.from(files || [])) {
-    if (!file || !file.type?.startsWith("image/")) continue;
-    const key = getFileKey(file);
-    if (knownKeys.has(key)) continue;
-    merged.push(file);
-    knownKeys.add(key);
+    if (parsed.hostname.includes("google.") && parsed.pathname === "/imgres") {
+      const embeddedImageUrl = parsed.searchParams.get("imgurl");
+      if (embeddedImageUrl) {
+        return new URL(embeddedImageUrl).toString();
+      }
+    }
+
+    return parsed.toString();
   }
 
-  selectedPortfolioFiles = merged;
-}
-
-function renderSelectedPortfolioPreview() {
-  if (!portfolioImagePreview) return;
-
-  const showExisting = editingPortfolioId && !portfolioReplaceImages?.checked;
-
-  const localPreview = selectedPortfolioFiles.map((file, index) => {
-    const kb = Math.max(1, Math.round(file.size / 1024));
-    return `
-      <div class="portfolio-upload-chip">
-        <span class="portfolio-upload-chip-name">${escapeHtml(file.name || `Imagen ${index + 1}`)}</span>
-        <span class="portfolio-upload-chip-size">${kb} KB</span>
-        <button class="btn secondary portfolio-remove-local-image-btn" type="button" data-local-index="${index}">Quitar</button>
-      </div>
-    `;
-  }).join("");
-
-  const existingPreview = showExisting ? editingExistingImages.map((url, index) => `
-    <div class="portfolio-upload-chip">
-      <img class="portfolio-upload-chip-thumb" src="${escapeHtml(url)}" alt="Imagen actual ${index + 1}" loading="lazy" />
-      <span class="portfolio-upload-chip-name">Imagen actual ${index + 1}</span>
-    </div>
-  `).join("") : "";
-
-  if (!localPreview && !existingPreview) {
-    portfolioImagePreview.innerHTML = "<p class=\"portfolio-upload-empty\">Aun no has seleccionado imagenes.</p>";
-    return;
+  const urls = [];
+  for (const line of rawLines) {
+    try {
+      const normalized = normalizeImageUrl(line);
+      const u = new URL(normalized);
+      if (!["http:", "https:"].includes(u.protocol)) {
+        throw new Error("URL no valida");
+      }
+      urls.push(u.toString());
+    } catch (error) {
+      throw new Error(`URL de imagen invalida: ${line}`);
+    }
   }
-
-  portfolioImagePreview.innerHTML = `${existingPreview}${localPreview}`;
+  return urls;
 }
 
 function renderImageViewer() {
@@ -490,14 +470,10 @@ function openImageViewer(images, startUrl, title) {
 function resetPortfolioForm() {
   if (!portfolioForm) return;
   editingPortfolioId = null;
-  editingExistingImages = [];
-  selectedPortfolioFiles = [];
   portfolioForm.reset();
-  if (portfolioReplaceImages) portfolioReplaceImages.checked = false;
   if (portfolioSaveBtn) portfolioSaveBtn.textContent = "Guardar trabajo";
   if (portfolioCancelEditBtn) portfolioCancelEditBtn.hidden = true;
   if (portfolioModalTitle) portfolioModalTitle.textContent = "Nuevo trabajo";
-  renderSelectedPortfolioPreview();
 }
 
 function renderPortfolioJobs() {
@@ -594,13 +570,10 @@ function startEditPortfolioJob(jobId) {
   if (!job || !portfolioForm) return;
 
   editingPortfolioId = job.id;
-  editingExistingImages = normalizeImageList(job.imagenes);
-  selectedPortfolioFiles = [];
   portfolioTitulo.value = job.titulo || "";
   portfolioFecha.value = job.fechaTrabajo || "";
   portfolioDescripcion.value = job.descripcion || "";
-  if (portfolioReplaceImages) portfolioReplaceImages.checked = false;
-  renderSelectedPortfolioPreview();
+  if (portfolioImagenes) portfolioImagenes.value = Array.isArray(job.imagenes) ? job.imagenes.join("\n") : "";
   if (portfolioSaveBtn) portfolioSaveBtn.textContent = "Actualizar trabajo";
   if (portfolioCancelEditBtn) portfolioCancelEditBtn.hidden = false;
   if (portfolioModalTitle) portfolioModalTitle.textContent = "Editar trabajo";
@@ -1140,26 +1113,30 @@ if (portfolioForm) {
   portfolioForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
+    if (!currentUser) {
+      setPortfolioMessage("Debes hacer login primero.", true);
+      return;
+    }
+
     if (currentRole !== "contratista") {
-      setPortfolioMessage("Solo los contratistas pueden gestionar el catalogo.", true);
+      setPortfolioMessage("Solo los contratistas pueden gestionar el catalogo. Verifica que tu cuenta es de contratista.", true);
       return;
     }
 
     try {
-      const replaceExisting = Boolean(portfolioReplaceImages?.checked);
-      const keepExisting = editingPortfolioId && !replaceExisting;
-      const baseImages = keepExisting ? [...editingExistingImages] : [];
-      const uploadedUrls = await uploadPortfolioImages(selectedPortfolioFiles);
-
       const payload = {
         titulo: portfolioTitulo.value.trim(),
         fechaTrabajo: portfolioFecha.value,
         descripcion: portfolioDescripcion.value.trim(),
-        imagenes: [...baseImages, ...uploadedUrls]
+        imagenes: parseImageUrls(portfolioImagenes?.value)
       };
 
       if (!payload.titulo || !payload.fechaTrabajo || !payload.descripcion) {
         throw new Error("Completa titulo, fecha y descripcion.");
+      }
+
+      if (!payload.imagenes.length) {
+        throw new Error("Agrega al menos un enlace directo de imagen.");
       }
 
       if (payload.imagenes.length > 20) {
@@ -1180,47 +1157,6 @@ if (portfolioForm) {
     } catch (error) {
       setPortfolioMessage(asMessage(error), true);
     }
-  });
-
-  portfolioForm.addEventListener("paste", (event) => {
-    const clipboardItems = Array.from(event.clipboardData?.items || []);
-    const imageFiles = clipboardItems
-      .filter((item) => item.type?.startsWith("image/"))
-      .map((item) => item.getAsFile())
-      .filter(Boolean);
-
-    if (!imageFiles.length) return;
-
-    addPortfolioFiles(imageFiles);
-    renderSelectedPortfolioPreview();
-    setPortfolioMessage(`Se agregaron ${imageFiles.length} imagen(es) desde el portapapeles.`);
-    event.preventDefault();
-  });
-}
-
-if (portfolioImagenesArchivos) {
-  portfolioImagenesArchivos.addEventListener("change", (event) => {
-    addPortfolioFiles(event.target?.files || []);
-    renderSelectedPortfolioPreview();
-    setPortfolioMessage("Imagenes listas para subir.");
-    portfolioImagenesArchivos.value = "";
-  });
-}
-
-if (portfolioImagePreview) {
-  portfolioImagePreview.addEventListener("click", (event) => {
-    const removeBtn = event.target.closest(".portfolio-remove-local-image-btn");
-    if (!removeBtn) return;
-    const index = Number(removeBtn.dataset.localIndex);
-    if (!Number.isInteger(index) || index < 0) return;
-    selectedPortfolioFiles = selectedPortfolioFiles.filter((_, i) => i !== index);
-    renderSelectedPortfolioPreview();
-  });
-}
-
-if (portfolioReplaceImages) {
-  portfolioReplaceImages.addEventListener("change", () => {
-    renderSelectedPortfolioPreview();
   });
 }
 
@@ -1672,10 +1608,6 @@ if (clientMessagesList) {
 
 if (listEl) {
   loadContractors();
-}
-
-if (portfolioImagePreview) {
-  renderSelectedPortfolioPreview();
 }
 
 onAuthStateChanged(auth, async (user) => {

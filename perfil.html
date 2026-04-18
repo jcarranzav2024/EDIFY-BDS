@@ -129,15 +129,13 @@
         <input id="portfolioFecha" type="date" required />
         <textarea id="portfolioDescripcion" rows="3" placeholder="Descripcion del trabajo" required></textarea>
         <div class="portfolio-upload-block">
-          <label for="portfolioImagenesArchivos">Imagenes del trabajo</label>
-          <input id="portfolioImagenesArchivos" type="file" accept="image/*" multiple />
-          <p class="input-hint">Selecciona imagenes de tu galeria o archivos del dispositivo. En movil tambien puedes tomar foto si tu navegador lo permite.</p>
-          <label class="checkbox-inline" for="portfolioReplaceImages">
-            <input id="portfolioReplaceImages" type="checkbox" />
-            Reemplazar imagenes actuales al editar
-          </label>
-          <p class="input-hint">Tambien puedes pegar imagenes desde el portapapeles dentro de este formulario.</p>
-          <div id="portfolioImagePreview" class="portfolio-upload-preview" aria-live="polite"></div>
+          <label for="portfolioImagenes">Imagenes del trabajo</label>
+          <textarea
+            id="portfolioImagenes"
+            rows="5"
+            placeholder="Pega aqui uno o varios enlaces directos de imagen, uno por linea"
+          ></textarea>
+          <p class="input-hint">Pega enlaces directos de imagen, uno por linea. Si editas un trabajo, puedes dejar vacio este campo para conservar las imagenes actuales.</p>
         </div>
         <div class="inline-actions">
           <button id="portfolioSaveBtn" class="btn" type="submit">Guardar trabajo</button>
