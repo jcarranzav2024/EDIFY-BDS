@@ -70,6 +70,11 @@ const messageContractorId = document.getElementById("messageContractorId");
 const messageSubject = document.getElementById("messageSubject");
 const messageBody = document.getElementById("messageBody");
 
+const contractorDetailModal = document.getElementById("contractorDetailModal");
+const contractorDetailBackdrop = document.getElementById("contractorDetailBackdrop");
+const contractorDetailCloseBtn = document.getElementById("contractorDetailCloseBtn");
+const contractorDetailContent = document.getElementById("contractorDetailContent");
+
 const contractorMessagesSection = document.getElementById("contractorMessagesSection");
 const contractorMessagesNotice = document.getElementById("contractorMessagesNotice");
 const contractorMessagesList = document.getElementById("contractorMessagesList");
@@ -78,6 +83,8 @@ let currentUser = null;
 let currentRole = "guest";
 let editingPortfolioId = null;
 let myPortfolioJobs = [];
+let contractorsCache = [];
+let selectedContractor = null;
 
 let imageViewer = null;
 let imageViewerMain = null;
@@ -211,6 +218,12 @@ function setMessageModalOpen(isOpen) {
   }
 }
 
+function setContractorDetailOpen(isOpen) {
+  if (!contractorDetailModal) return;
+  contractorDetailModal.hidden = !isOpen;
+  document.body.style.overflow = isOpen ? "hidden" : "";
+}
+
 function setRequestMessage(text, isError = false) {
   if (!requestMessage) return;
   requestMessage.textContent = text;
@@ -230,6 +243,22 @@ function formatDate(value) {
     dateStyle: "short",
     timeStyle: "short"
   });
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function renderRatingSummary(rating, total) {
+  const normalizedRating = Number.isFinite(Number(rating)) ? Number(rating) : 0;
+  const rounded = Math.max(0, Math.min(5, Math.round(normalizedRating)));
+  const stars = "★".repeat(rounded) + "☆".repeat(5 - rounded);
+  return `<span class="contractor-rating-stars" aria-label="${rounded} de 5">${stars}</span> <span class="contractor-rating-meta">${normalizedRating.toFixed(1)} (${Number(total || 0)} resenas)</span>`;
 }
 
 function setImageViewerOpen(isOpen) {
@@ -521,39 +550,116 @@ async function loadContractors(filters = {}) {
 
   listEl.innerHTML = "<p>Cargando contratistas...</p>";
   try {
-    let q = query(collection(db, "contractors"), limit(30));
-    if (filters.especialidad) {
-      q = query(collection(db, "contractors"), where("especialidad", "==", filters.especialidad), limit(30));
-    }
-
+    const q = query(collection(db, "contractors"), limit(120));
     const snap = await getDocs(q);
-    const cards = [];
+    contractorsCache = snap.docs.map((item) => ({ id: item.id, ...item.data() }));
 
-    snap.forEach((item) => {
-      const data = item.data();
-      if (filters.zona && String(data.zona || "").toLowerCase() !== filters.zona.toLowerCase()) {
-        return;
-      }
+    const searchTerm = normalizeText(filters.especialidad);
+    const zoneTerm = normalizeText(filters.zona);
 
-      const canRequest = ["cliente", "admin"].includes(currentRole);
-      cards.push(`
-        <article class="card">
-          <h3>${data.nombreVisible || "Sin nombre"}</h3>
-          <p><strong>Especialidad:</strong> ${data.especialidad || "N/A"}</p>
-          <p><strong>Servicios:</strong> ${data.servicios || data.especialidad || "N/A"}</p>
-          <p><strong>Zona:</strong> ${data.zona || "N/A"}</p>
-          <p>${data.descripcion || "Sin descripcion"}</p>
-          <p><strong>Rating:</strong> ${data.ratingPromedio || 0} (${data.totalResenas || 0} resenas)</p>
-          ${canRequest ? `<button class="btn action-btn send-message-btn" type="button" data-contractor-id="${item.id}" data-servicio="${data.servicios || data.especialidad || "Servicio general"}">Contactar contratista</button>` : ""}
-          <button class="btn secondary action-btn view-reviews-btn" type="button" data-contractor-id="${item.id}">Ver resenas</button>
-        </article>
-      `);
+    const filtered = contractorsCache.filter((item) => {
+      const name = normalizeText(item.nombreVisible);
+      const specialty = normalizeText(item.especialidad);
+      const services = normalizeText(item.servicios);
+      const zone = normalizeText(item.zona);
+
+      const searchMatch = !searchTerm
+        || name.includes(searchTerm)
+        || specialty.includes(searchTerm)
+        || services.includes(searchTerm);
+      const zoneMatch = !zoneTerm || zone.includes(zoneTerm);
+
+      return searchMatch && zoneMatch;
     });
+
+    const cards = filtered.map((item) => `
+      <article class="card contractor-search-card" data-contractor-id="${item.id}">
+        <h3>${escapeHtml(item.nombreVisible || "Sin nombre")}</h3>
+        <p class="contractor-specialty"><strong>Especialidad:</strong> ${escapeHtml(item.especialidad || "N/A")}</p>
+        <p class="contractor-rating-line"><strong>Ranking:</strong> ${renderRatingSummary(item.ratingPromedio, item.totalResenas)}</p>
+        <button class="btn secondary action-btn open-contractor-detail-btn" type="button" data-open-contractor-id="${item.id}">Ver detalle</button>
+      </article>
+    `);
 
     listEl.innerHTML = cards.length ? cards.join("") : "<p>No hay contratistas para ese filtro.</p>";
   } catch (error) {
     listEl.innerHTML = `<p>Error cargando contratistas: ${asMessage(error)}</p>`;
   }
+}
+
+async function getContractorPortfolioPreview(contractorId) {
+  if (!contractorId) return [];
+  try {
+    const jobsQ = query(
+      collection(db, "portfolio_jobs"),
+      where("contractorId", "==", contractorId),
+      limit(8)
+    );
+    const jobsSnap = await getDocs(jobsQ);
+    return jobsSnap.docs.map((item) => ({ id: item.id, ...item.data() }));
+  } catch (error) {
+    return [];
+  }
+}
+
+async function renderContractorDetail(contractorId) {
+  if (!contractorDetailContent) return;
+
+  selectedContractor = contractorsCache.find((item) => item.id === contractorId) || null;
+  if (!selectedContractor) {
+    contractorDetailContent.innerHTML = "<p>No se encontro informacion del contratista.</p>";
+    return;
+  }
+
+  contractorDetailContent.innerHTML = "<p>Cargando detalle...</p>";
+
+  const jobs = await getContractorPortfolioPreview(contractorId);
+  const canRequest = ["cliente", "admin"].includes(currentRole);
+
+  const jobsHtml = jobs.length
+    ? jobs.map((job) => {
+      const images = Array.isArray(job.imagenes) ? job.imagenes.filter(Boolean) : [];
+      const preview = images.length
+        ? `
+          <div class="contractor-job-media-wrap">
+            <img class="contractor-job-media" src="${escapeHtml(images[0])}" alt="Trabajo ${escapeHtml(job.titulo || "sin titulo")}" loading="lazy" />
+          </div>
+          <div class="contractor-job-thumbs">
+            ${images.slice(0, 4).map((url, index) => `<img class="contractor-job-thumb" src="${escapeHtml(url)}" alt="Miniatura ${index + 1}" loading="lazy" />`).join("")}
+          </div>
+        `
+        : "<p class=\"portfolio-no-images\">Sin imagenes.</p>";
+
+      return `
+        <article class="card contractor-job-card">
+          <h4>${escapeHtml(job.titulo || "Trabajo")}</h4>
+          <p><strong>Fecha:</strong> ${escapeHtml(job.fechaTrabajo || "N/A")}</p>
+          <p>${escapeHtml(job.descripcion || "Sin descripcion")}</p>
+          ${preview}
+        </article>
+      `;
+    }).join("")
+    : "<p>Este contratista aun no tiene trabajos publicados.</p>";
+
+  contractorDetailContent.innerHTML = `
+    <article class="card contractor-detail-card-main">
+      <h4>${escapeHtml(selectedContractor.nombreVisible || "Sin nombre")}</h4>
+      <p><strong>Especialidad:</strong> ${escapeHtml(selectedContractor.especialidad || "N/A")}</p>
+      <p><strong>Servicios:</strong> ${escapeHtml(selectedContractor.servicios || selectedContractor.especialidad || "N/A")}</p>
+      <p><strong>Zona:</strong> ${escapeHtml(selectedContractor.zona || "N/A")}</p>
+      <p><strong>Ranking:</strong> ${renderRatingSummary(selectedContractor.ratingPromedio, selectedContractor.totalResenas)}</p>
+      <p>${escapeHtml(selectedContractor.descripcion || "Sin descripcion")}</p>
+      <div class="inline-actions contractor-detail-actions">
+        ${canRequest ? `<button class="btn contractor-detail-contact-btn" type="button" data-detail-contact-id="${selectedContractor.id}" data-servicio="${escapeHtml(selectedContractor.servicios || selectedContractor.especialidad || "Servicio general")}">Contactar</button>` : ""}
+        ${canRequest ? `<button class="btn secondary contractor-detail-request-btn" type="button" data-detail-request-id="${selectedContractor.id}" data-servicio="${escapeHtml(selectedContractor.servicios || selectedContractor.especialidad || "Servicio general")}">Contratar</button>` : ""}
+        <button class="btn secondary contractor-detail-reviews-btn" type="button" data-detail-reviews-id="${selectedContractor.id}">Ver comentarios</button>
+      </div>
+    </article>
+    <section class="contractor-jobs-gallery">
+      <h4>Trabajos realizados</h4>
+      <div class="portfolio-grid contractor-public-jobs-grid">${jobsHtml}</div>
+    </section>
+  `;
 }
 
 async function loadRepliesForMessage(messageId) {
@@ -678,10 +784,25 @@ async function ensureDefaultPlans() {
 }
 
 if (filterBtn) {
-  filterBtn.addEventListener("click", () => {
+  const applyFilters = () => {
     const especialidad = document.getElementById("filterEspecialidad").value.trim();
     const zona = document.getElementById("filterZona").value.trim();
     loadContractors({ especialidad, zona });
+  };
+
+  filterBtn.addEventListener("click", applyFilters);
+
+  const searchInputs = ["filterEspecialidad", "filterZona"]
+    .map((id) => document.getElementById(id))
+    .filter(Boolean);
+
+  searchInputs.forEach((input) => {
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyFilters();
+      }
+    });
   });
 }
 
@@ -950,6 +1071,14 @@ if (portfolioList) {
 
 if (listEl) {
   listEl.addEventListener("click", async (event) => {
+    const openDetailBtn = event.target.closest(".open-contractor-detail-btn");
+    if (openDetailBtn) {
+      const contractorId = openDetailBtn.dataset.openContractorId;
+      await renderContractorDetail(contractorId);
+      setContractorDetailOpen(true);
+      return;
+    }
+
     const reviewsBtn = event.target.closest(".view-reviews-btn");
     if (reviewsBtn) {
       const contractorId = reviewsBtn.dataset.contractorId;
@@ -1006,6 +1135,85 @@ if (listEl) {
         createdAt: serverTimestamp()
       });
 
+      setRequestMessage("Solicitud enviada correctamente al contratista.");
+    } catch (error) {
+      setRequestMessage(`No se pudo enviar la solicitud: ${asMessage(error)}`, true);
+    }
+  });
+}
+
+if (contractorDetailCloseBtn) {
+  contractorDetailCloseBtn.addEventListener("click", () => {
+    setContractorDetailOpen(false);
+  });
+}
+
+if (contractorDetailBackdrop) {
+  contractorDetailBackdrop.addEventListener("click", () => {
+    setContractorDetailOpen(false);
+  });
+}
+
+if (contractorDetailContent) {
+  contractorDetailContent.addEventListener("click", async (event) => {
+    const reviewsBtn = event.target.closest(".contractor-detail-reviews-btn");
+    if (reviewsBtn) {
+      const contractorId = reviewsBtn.dataset.detailReviewsId;
+      const query = contractorId ? `?contractorId=${encodeURIComponent(contractorId)}` : "";
+      window.location.href = `./resenas.html${query}`;
+      return;
+    }
+
+    const contactBtn = event.target.closest(".contractor-detail-contact-btn");
+    if (contactBtn) {
+      if (!currentUser) {
+        setRequestMessage("Debes iniciar sesion como cliente para contactar contratistas.", true);
+        return;
+      }
+
+      if (!["cliente", "admin"].includes(currentRole)) {
+        setRequestMessage("Solo cuentas de cliente registradas pueden enviar mensajes.", true);
+        return;
+      }
+
+      const contractorId = contactBtn.dataset.detailContactId;
+      const servicio = contactBtn.dataset.servicio || "Servicio";
+      if (messageContractorId) messageContractorId.value = contractorId;
+      if (messageSubject) messageSubject.value = `Consulta sobre ${servicio}`;
+      if (messageBody) messageBody.value = "";
+      setContractorDetailOpen(false);
+      setMessageModalOpen(true);
+      return;
+    }
+
+    const requestBtn = event.target.closest(".contractor-detail-request-btn");
+    if (!requestBtn) return;
+
+    if (!currentUser) {
+      setRequestMessage("Debes iniciar sesion como cliente para solicitar un servicio.", true);
+      return;
+    }
+
+    if (!["cliente", "admin"].includes(currentRole)) {
+      setRequestMessage("Solo un usuario cliente o admin puede solicitar servicios.", true);
+      return;
+    }
+
+    const contractorId = requestBtn.dataset.detailRequestId;
+    const servicio = requestBtn.dataset.servicio || "Servicio";
+    const detalle = window.prompt("Describe brevemente lo que necesitas:", "");
+
+    try {
+      await addDoc(collection(db, "service_requests"), {
+        clientId: currentUser.uid,
+        contractorId,
+        servicioSolicitado: servicio,
+        detalle: (detalle || "").trim(),
+        estado: "pendiente",
+        createdAt: serverTimestamp()
+      });
+
+      setContractorDetailOpen(false);
       setRequestMessage("Solicitud enviada correctamente al contratista.");
     } catch (error) {
       setRequestMessage(`No se pudo enviar la solicitud: ${asMessage(error)}`, true);

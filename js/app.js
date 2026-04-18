@@ -1,5 +1,6 @@
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { auth } from "./firebase-config.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { auth, db } from "./firebase-config.js";
 import { logoutUser } from "./auth.js";
 import { initAuthUserMenu, initContactMenu, initMobileNav } from "./nav.js";
 import { initHelpBot } from "./help-bot.js";
@@ -7,6 +8,42 @@ import { initHelpBot } from "./help-bot.js";
 const sessionStatus = document.getElementById("sessionStatus");
 const logoutBtn = document.getElementById("logoutBtn");
 const carousel = document.querySelector("[data-carousel]");
+const heroStartBtn = document.getElementById("heroStartBtn");
+
+function normalizeRole(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+async function getCurrentUserRole(user) {
+  if (!user) return "guest";
+  try {
+    const userSnap = await getDoc(doc(db, "users", user.uid));
+    if (!userSnap.exists()) return "guest";
+    return normalizeRole(userSnap.data().rol || "guest");
+  } catch (error) {
+    return "guest";
+  }
+}
+
+function applyHeroCtaByRole(role) {
+  if (!heroStartBtn) return;
+
+  if (role === "contratista") {
+    heroStartBtn.hidden = false;
+    heroStartBtn.textContent = "Ver mi perfil";
+    heroStartBtn.href = "./perfil.html";
+    return;
+  }
+
+  if (role === "cliente" || role === "admin") {
+    heroStartBtn.hidden = true;
+    return;
+  }
+
+  heroStartBtn.hidden = false;
+  heroStartBtn.textContent = "Empezar";
+  heroStartBtn.href = "./registro.html";
+}
 
 initMobileNav();
 initContactMenu();
@@ -15,11 +52,16 @@ initHelpBot();
 
 onAuthStateChanged(auth, async (user) => {
   if (user) {
+    const role = await getCurrentUserRole(user);
+    applyHeroCtaByRole(role);
+
     if (sessionStatus) {
       sessionStatus.textContent = `Sesion activa: ${user.email}`;
     }
     return;
   }
+
+  applyHeroCtaByRole("guest");
 
   if (sessionStatus) {
     sessionStatus.textContent = "Sin sesion activa";

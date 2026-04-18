@@ -62,11 +62,13 @@ function buildHelpPanel() {
       <h3>Centro de ayuda</h3>
       <button id="helpBotClose" class="btn secondary" type="button" aria-label="Cerrar ayuda">X</button>
     </header>
-    <p class="help-bot-subtitle">Selecciona una opcion rapida:</p>
-    <div id="helpBotOptions" class="help-bot-options"></div>
-    <article id="helpBotResult" class="help-bot-result">
-      <p>Elige una opcion para ver los pasos.</p>
-    </article>
+    <div class="help-bot-body">
+      <p class="help-bot-subtitle">Selecciona una opcion rapida:</p>
+      <div id="helpBotOptions" class="help-bot-options"></div>
+      <article id="helpBotResult" class="help-bot-result">
+        <p>Elige una opcion para ver los pasos.</p>
+      </article>
+    </div>
   `;
 
   return wrapper;
@@ -119,6 +121,10 @@ export function initHelpBot() {
     });
     optionsEl.appendChild(btn);
   });
+
+  if (HELP_ITEMS.length) {
+    renderHelpResult(resultEl, HELP_ITEMS[0]);
+  }
 
   toggle.addEventListener("click", () => {
     const isOpen = toggle.getAttribute("aria-expanded") === "true";

@@ -51,7 +51,7 @@
     <section class="card">
       <h1>Directorio de contratistas</h1>
       <div class="grid filters">
-        <input id="filterEspecialidad" type="text" placeholder="Filtrar por especialidad" />
+        <input id="filterEspecialidad" type="text" placeholder="Buscar por nombre, especialidad o servicio" />
         <input id="filterZona" type="text" placeholder="Filtrar por zona" />
         <button id="filterBtn" class="btn" type="button">Aplicar filtros</button>
       </div>
@@ -74,6 +74,17 @@
         <textarea id="messageBody" rows="4" placeholder="Describe lo que necesitas" required></textarea>
         <button class="btn" type="submit">Enviar mensaje</button>
       </form>
+    </section>
+  </div>
+
+  <div id="contractorDetailModal" class="app-modal" hidden>
+    <div id="contractorDetailBackdrop" class="app-modal-backdrop" data-close-contractor-detail="true"></div>
+    <section class="app-modal-dialog card contractor-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="contractorDetailTitle">
+      <div class="app-modal-header">
+        <h3 id="contractorDetailTitle">Detalle del contratista</h3>
+        <button id="contractorDetailCloseBtn" class="btn secondary" type="button" aria-label="Cerrar">X</button>
+      </div>
+      <div id="contractorDetailContent" class="contractor-detail-content"></div>
     </section>
   </div>
 

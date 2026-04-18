@@ -76,6 +76,10 @@ EDIFY-BDS/
 - Listado de perfiles
 - Filtros por especialidad y zona
 - Vista de perfil publico
+- Directorio en tarjetas compactas: mostrar solo nombre, especialidad y ranking de estrellas.
+- Al abrir una tarjeta: mostrar detalle completo (servicios, zona, descripcion, trabajos, acciones).
+- Acciones en detalle: contactar, contratar y ver comentarios/resenas.
+- Busqueda tolerante: insensible a mayusculas, acentos y variaciones de espacios.
 
 3. Calificaciones privadas (1 a 5 estrellas)
 - Cliente autenticado oficial califica contratista con estrellas (1 a 5).
@@ -100,6 +104,7 @@ Implementacion actual del catalogo:
 - Boton "Tamano real" abre visor y permite navegar todas las fotos del trabajo.
 - Normalizacion de links de Google Images tipo /imgres a URL directa (imgurl).
 - Compatibilidad movil: tarjetas fluidas, galeria tactil y modal ajustado a pantalla pequena.
+- Mejora visual mobile en imagenes: proporcion estable, recorte consistente y miniaturas con scroll horizontal.
 
 5. Referencias
 - Crear referencia por trabajo
@@ -117,6 +122,7 @@ Implementacion actual del catalogo:
 - Flujos minimos: como publicar trabajos, como contratar contratistas, como dejar calificacion, como gestionar plan.
 - Boton flotante visible en mobile y desktop.
 - Escalado futuro: integrar IA o base de conocimiento dinamica.
+- Mejora UI del bot: boton flotante mejor posicionado, panel con cabecera destacada y contenido ordenado para mobile.
 
 8. Suscripciones y planes
 - Planes: gratis, basico, intermedio, premium
@@ -143,6 +149,30 @@ Implementacion actual del catalogo:
 - Formularios con controles tactiles, botones min. 44px, tipografia legible y espaciado vertical.
 - Tablas del admin con version compacta o tarjetas en pantallas pequenas.
 - Validar navegacion tactil para modales, dropdowns, galerias y bot de ayuda.
+
+12. Mejora visual para dispositivos moviles
+- Evitar que las imagenes se deformen o se salgan del contenedor.
+- Usar `width: 100%`, `max-width: 100%`, `height: auto` y `object-fit: cover` o `contain` segun el caso.
+- Definir proporciones fijas para tarjetas e imagenes destacadas con `aspect-ratio`.
+- Hacer que las galerias pasen a una sola columna en pantallas pequenas.
+- Convertir modales grandes en paneles verticales o fullscreen en mobile.
+- Mantener margenes laterales consistentes y evitar elementos pegados a los bordes.
+- Ajustar texto, botones y secciones para que no dependan de anchos fijos.
+- Probar que no haya scroll horizontal en resoluciones de 360 px, 375 px y 414 px.
+- Priorizar tarjetas apiladas y listas verticales sobre tablas anchas.
+- Reducir el tamano de imagen principal y miniaturas en vistas de perfil y catalogo.
+
+### Reglas visuales recomendadas para mobile
+1. Contenedores principales con `padding` lateral de 12 a 16 px.
+2. Imagen principal del catalogo con ancho completo y alto controlado.
+3. Miniaturas debajo de la imagen principal, alineadas en una fila con scroll horizontal si es necesario.
+4. Tarjetas de trabajos y contratistas con altura flexible, no fija.
+5. Encabezados y titulos con salto de linea permitido para evitar desbordes.
+6. Formularios con campos a ancho completo y botones apilados cuando el espacio sea reducido.
+7. Boton flotante del bot de ayuda visible sin tapar contenido importante.
+8. Modal de detalles con contenido desplazable dentro del propio modal.
+9. Tablas de admin transformadas a tarjetas o bloques apilados en pantallas pequenas.
+10. Cualquier imagen decorativa debe tener tamanos responsivos y no ocupar mas espacio del necesario.
 
 ## Modelo de datos simplificado (Firestore)
 
@@ -575,6 +605,11 @@ service cloud.firestore {
 - Todas las vistas y flujos del sistema deben ser mobile-first.
 - Verificacion minima en telefonos de gama baja/media y tablets.
 - Las funciones nuevas (calificaciones privadas, mensajeria y bot) deben funcionar con interaccion tactil.
+- La galeria de trabajos debe priorizar visualizacion clara de imagen principal + miniaturas desplazables en pantallas pequenas.
+
+11. Home y navegacion por rol:
+- El boton "Empezar" se oculta para cliente/admin luego de iniciar sesion.
+- Para contratista autenticado, el boton principal de home cambia a "Ver mi perfil" y redirige a perfil.html.
 
 ## Configuracion minima de Firebase en frontend
 Archivo sugerido: firebase-config.js
