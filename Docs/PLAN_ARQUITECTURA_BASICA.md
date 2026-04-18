@@ -11,8 +11,9 @@ Construir una web sencilla de contratistas con:
 - Visibilidad de calificaciones para cualquier usuario autenticado (ocultas para visitantes no registrados)
 - Referencias de clientes por trabajo
 - Suscripciones por planes (gratis, basico, intermedio, premium)
-- Mensajeria cliente-contratista (solicitud y respuesta)
+- Mensajeria cliente-contratista desde boton "Contactar" (solicitud, notificacion y respuesta)
 - Bot de ayuda con opciones de funciones clave de la plataforma
+- Interfaz de contacto por escrito moderna, clara y facil de usar en mobile y desktop
 - Experiencia responsiva para moviles (flujos nuevos y existentes)
 - Dashboard administrativo separado para gestion
 - Persistencia real en la nube sin servidor propio
@@ -23,8 +24,7 @@ Construir una web sencilla de contratistas con:
 - JavaScript vanilla (logica)
 - Firebase Authentication (registro/login)
 - Firebase Firestore (base de datos)
-- URLs de imagen externas para catalogo (sin costo)
-- Firebase Storage (opcional para fase futura)
+- Firebase Storage (carga directa de imagenes de galeria/camara/archivo)
 - Pasarela de pago (Stripe o Mercado Pago)
 - Hosting estatico en GitHub Pages
 
@@ -90,11 +90,13 @@ EDIFY-BDS/
 
 4. Catalogo de trabajos anteriores
 - Crear trabajo realizado con fecha de ejecucion
-- Registrar varias imagenes por trabajo mediante URLs
+- Registrar varias imagenes por trabajo mediante carga directa de archivos
+- Permitir seleccionar imagen desde galeria del dispositivo (mobile y desktop)
+- Permitir tomar o adjuntar foto en dispositivos moviles cuando el navegador lo soporte
 - Adjuntar calificaciones del trabajo (1 a 5 + comentario opcional)
 - Adjuntar referencias de clientes
 
-Implementacion actual del catalogo:
+Implementacion objetivo del catalogo (actualizacion):
 - CRUD completo en perfil de contratista.
 - Formulario en modal (abrir por boton "Nuevo trabajo").
 - Cierre del modal solo con boton "X".
@@ -102,7 +104,9 @@ Implementacion actual del catalogo:
 - Mini galeria por tarjeta con imagen principal + miniaturas.
 - Clic en miniatura cambia la imagen principal de la tarjeta.
 - Boton "Tamano real" abre visor y permite navegar todas las fotos del trabajo.
-- Normalizacion de links de Google Images tipo /imgres a URL directa (imgurl).
+- Carga directa a Firebase Storage con metadatos por imagen en Firestore.
+- Validacion de tipo y tamano (ej: JPG/PNG/WebP y limite por plan).
+- Compresion/redimension opcional en cliente antes de subir para mejorar rendimiento en mobile.
 - Compatibilidad movil: tarjetas fluidas, galeria tactil y modal ajustado a pantalla pequena.
 - Mejora visual mobile en imagenes: proporcion estable, recorte consistente y miniaturas con scroll horizontal.
 
@@ -111,10 +115,13 @@ Implementacion actual del catalogo:
 - Ver referencias autorizadas por contratista
 
 6. Mensajeria cliente-contratista
+- Cliente autenticado pulsa el boton "Contactar" en el perfil del contratista y abre un formulario de mensaje.
 - Cliente autenticado envia mensaje de interes/solicitud al contratista.
 - Contratista ve una lista de clientes interesados y responde cada mensaje.
 - Estados del hilo: nuevo, leido, respondido, cerrado.
 - Notificacion visual en perfil del contratista para mensajes pendientes.
+- Notificacion visual para el cliente cuando el contratista responde.
+- UI de mensajeria con buena jerarquia visual: lista de conversaciones, panel de mensajes, estados claros y acciones visibles.
 - Acceso: solo participantes del hilo y admin.
 
 7. Bot de ayuda (FAQ guiada)
@@ -161,6 +168,16 @@ Implementacion actual del catalogo:
 - Probar que no haya scroll horizontal en resoluciones de 360 px, 375 px y 414 px.
 - Priorizar tarjetas apiladas y listas verticales sobre tablas anchas.
 - Reducir el tamano de imagen principal y miniaturas en vistas de perfil y catalogo.
+
+13. Interfaz de contacto escrito (UX/UI)
+- Diseno limpio y moderno para la experiencia de contacto cliente-contratista.
+- Componente de chat con burbujas diferenciadas por rol (cliente/contratista).
+- Lista de conversaciones con vista previa de ultimo mensaje, hora y badge de no leidos.
+- Estados de hilo visibles (nuevo, leido, respondido, cerrado) con colores consistentes.
+- Caja de redaccion comoda en mobile, con botones tactiles y envio claro.
+- Feedback inmediato al enviar: estado "enviando", "enviado" y errores recuperables.
+- Vacios de estado con mensajes utiles (sin conversaciones, sin respuesta aun, etc.).
+- Accesibilidad minima: contraste legible, foco visible y etiquetas claras en botones.
 
 ### Reglas visuales recomendadas para mobile
 1. Contenedores principales con `padding` lateral de 12 a 16 px.
@@ -222,15 +239,29 @@ Documento con ID automatico
   "descripcion": "Cambio de muebles y enchape",
   "fechaTrabajo": "2025-11-08",
   "imagenes": [
-    "https://sitio-publico.com/proyecto/img1.jpg",
-    "https://sitio-publico.com/proyecto/img2.jpg"
+    {
+      "storagePath": "portfolio_jobs/uid_contratista/job_abc/img_1.jpg",
+      "downloadURL": "https://firebasestorage.googleapis.com/...",
+      "mimeType": "image/jpeg",
+      "ancho": 1600,
+      "alto": 1200,
+      "tamanoBytes": 248000
+    },
+    {
+      "storagePath": "portfolio_jobs/uid_contratista/job_abc/img_2.webp",
+      "downloadURL": "https://firebasestorage.googleapis.com/...",
+      "mimeType": "image/webp",
+      "ancho": 1280,
+      "alto": 960,
+      "tamanoBytes": 176000
+    }
   ],
   "creadoEn": "serverTimestamp",
   "actualizadoEn": "serverTimestamp"
 }
 ```
 
-Nota: en el estado actual del MVP, `imagenes` almacena URLs publicas externas para evitar costo de Firebase Storage.
+Nota: para este ajuste, `imagenes` se sube de forma directa desde archivo/galeria/camara del dispositivo hacia Firebase Storage y se guarda referencia en Firestore.
 
 ### Coleccion: reviews
 Documento con ID automatico
@@ -317,6 +348,9 @@ Documento con ID automatico
   "subject": "Solicitud de cotizacion",
   "message": "Necesito remodelar cocina y bano",
   "status": "nuevo",
+  "lastMessageAt": "serverTimestamp",
+  "unreadByContractor": 1,
+  "unreadByClient": 0,
   "createdAt": "serverTimestamp",
   "updatedAt": "serverTimestamp"
 }
@@ -570,7 +604,8 @@ service cloud.firestore {
 
 4. Catalogo de trabajos:
 - Contratista crea trabajo en portfolio_jobs.
-- Registra URLs de imagen en el modal del catalogo.
+- Carga imagenes directas desde archivo/galeria/camara (input tipo file) en el modal del catalogo.
+- La app valida formato y tamano, sube a Firebase Storage y guarda metadatos en Firestore.
 - La tarjeta muestra imagen principal y miniaturas.
 - "Tamano real" abre visor con navegacion entre todas las imagenes del trabajo.
 - Se validan limites segun plan activo.
@@ -587,9 +622,12 @@ service cloud.firestore {
 - La app aplica limites y beneficios del plan.
 
 7. Mensajeria cliente-contratista:
-- Cliente autenticado envia mensaje al contratista desde su perfil publico.
+- Cliente autenticado pulsa "Contactar" en el perfil publico del contratista.
+- Se crea/abre hilo en contractor_messages y se envia el primer mensaje.
+- Contratista recibe indicador de no leidos en su bandeja/perfil.
 - Contratista visualiza lista de clientes interesados en su bandeja.
 - Contratista responde y se registra el hilo en subcoleccion replies.
+- Cliente recibe notificacion visual al existir respuesta del contratista.
 
 8. Bot de ayuda:
 - Usuario abre boton flotante del bot.
@@ -617,6 +655,7 @@ Archivo sugerido: firebase-config.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "TU_API_KEY",
@@ -630,6 +669,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 ```
 
 ## Ejecucion local y publicacion
@@ -671,7 +711,8 @@ Semana 4
 - Sin chat en tiempo real.
 - Pagos en linea en fase inicial (sin facturacion avanzada).
 - El admin designado por email es una solucion practica para MVP (ideal migrar luego a custom claims con backend).
-- Las imagenes del catalogo se manejan por URL externa (sin carga binaria directa desde la app).
+- La mensajeria funciona en modo bandeja/hilos (no streaming en tiempo real en esta fase).
+- La subida de imagenes depende de permisos y capacidades del navegador/dispositivo (puede variar por modelo/version).
 - El bot de ayuda en MVP usa FAQ guiada (sin NLP avanzado).
 
 ## Escalado futuro

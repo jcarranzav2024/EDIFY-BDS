@@ -538,6 +538,69 @@ textarea:focus {
   gap: 10px;
 }
 
+.input-hint {
+  margin: 0;
+  color: #395580;
+  font-size: 0.92rem;
+}
+
+.checkbox-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #1e2f6f;
+  font-weight: 600;
+}
+
+.portfolio-upload-block {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(147, 171, 224, 0.55);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(237, 245, 255, 0.78));
+}
+
+.portfolio-upload-preview {
+  display: grid;
+  gap: 8px;
+}
+
+.portfolio-upload-empty {
+  margin: 0;
+  color: var(--muted);
+}
+
+.portfolio-upload-chip {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(147, 171, 224, 0.48);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.portfolio-upload-chip-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(147, 171, 224, 0.48);
+}
+
+.portfolio-upload-chip-name {
+  color: #1e2f6f;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.portfolio-upload-chip-size {
+  color: #4a678f;
+  font-size: 0.86rem;
+}
+
 .portfolio-grid {
   display: grid;
   gap: 12px;
@@ -872,27 +935,137 @@ textarea:focus {
   filter: drop-shadow(0 2px 4px rgba(255, 200, 71, 0.4));
 }
 
-.contractor-message-item h3 {
-  margin-top: 0;
+
+.message-modal-dialog {
+  width: min(640px, 100%);
 }
 
-.message-replies {
-  margin: 10px 0;
+.conversation-thread {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(133, 162, 220, 0.45);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(239, 246, 255, 0.84));
+}
+
+.conversation-thread-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.conversation-thread-title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.conversation-thread-subject {
+  margin: 4px 0 0;
+  color: #38537d;
+}
+
+.conversation-thread-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.message-status-chip {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.message-status-chip.nuevo {
+  background: rgba(8, 136, 63, 0.14);
+  color: #0f6c38;
+}
+
+.message-status-chip.leido {
+  background: rgba(19, 78, 160, 0.14);
+  color: #1b4f8f;
+}
+
+.message-status-chip.respondido {
+  background: rgba(152, 94, 7, 0.16);
+  color: #7b4a00;
+}
+
+.message-status-chip.cerrado {
+  background: rgba(84, 98, 118, 0.14);
+  color: #44566f;
+}
+
+.message-unread-badge {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: rgba(208, 31, 73, 0.12);
+  color: #7e1132;
+}
+
+.chat-timeline {
+  display: grid;
+  gap: 8px;
   padding: 10px;
-  border: 1px solid rgba(147, 171, 224, 0.55);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(133, 162, 220, 0.4);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
 }
 
-.message-reply-row {
-  margin: 0 0 8px;
+.chat-bubble {
+  max-width: min(92%, 680px);
+  border-radius: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(133, 162, 220, 0.45);
+  display: grid;
+  gap: 4px;
 }
 
-.message-reply-row:last-child {
-  margin-bottom: 0;
+.chat-bubble.cliente {
+  justify-self: start;
+  background: rgba(225, 240, 255, 0.82);
+}
+
+.chat-bubble.contratista {
+  justify-self: end;
+  background: rgba(227, 252, 234, 0.82);
+}
+
+.chat-bubble-role {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #2a3f62;
+}
+
+.chat-bubble-text {
+  margin: 0;
+  color: #153052;
+  white-space: pre-wrap;
+}
+
+.chat-bubble-time {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #4d6588;
+}
+
+.conversation-thread-actions {
+  justify-content: flex-end;
 }
 
 .contractor-reply-input {
+  resize: vertical;
+}
+
+.client-reply-input {
   resize: vertical;
 }
 
@@ -1047,6 +1220,29 @@ textarea:focus {
 
   .contractor-detail-actions .btn {
     width: 100%;
+  }
+
+  .conversation-thread-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .conversation-thread-meta {
+    justify-content: flex-start;
+  }
+
+  .conversation-thread-actions .btn,
+  .portfolio-upload-chip .btn {
+    width: 100%;
+  }
+
+  .portfolio-upload-chip {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .chat-bubble {
+    max-width: 100%;
   }
 
   .contractor-job-thumb {

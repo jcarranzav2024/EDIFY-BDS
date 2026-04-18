@@ -25,6 +25,7 @@ import {
   createPortfolioJob,
   deletePortfolioJob,
   getMyPortfolioJobs,
+  uploadPortfolioImages,
   updatePortfolioJob
 } from "./portfolio.js";
 import { initHelpBot } from "./help-bot.js";
@@ -56,7 +57,9 @@ const portfolioModalCloseBtn = document.getElementById("portfolioModalCloseBtn")
 const portfolioTitulo = document.getElementById("portfolioTitulo");
 const portfolioFecha = document.getElementById("portfolioFecha");
 const portfolioDescripcion = document.getElementById("portfolioDescripcion");
-const portfolioImagenes = document.getElementById("portfolioImagenes");
+const portfolioImagenesArchivos = document.getElementById("portfolioImagenesArchivos");
+const portfolioReplaceImages = document.getElementById("portfolioReplaceImages");
+const portfolioImagePreview = document.getElementById("portfolioImagePreview");
 const portfolioSaveBtn = document.getElementById("portfolioSaveBtn");
 const portfolioCancelEditBtn = document.getElementById("portfolioCancelEditBtn");
 
@@ -78,13 +81,20 @@ const contractorDetailContent = document.getElementById("contractorDetailContent
 const contractorMessagesSection = document.getElementById("contractorMessagesSection");
 const contractorMessagesNotice = document.getElementById("contractorMessagesNotice");
 const contractorMessagesList = document.getElementById("contractorMessagesList");
+const clientMessagesSection = document.getElementById("clientMessagesSection");
+const clientMessagesNotice = document.getElementById("clientMessagesNotice");
+const clientMessagesList = document.getElementById("clientMessagesList");
 
 let currentUser = null;
 let currentRole = "guest";
 let editingPortfolioId = null;
 let myPortfolioJobs = [];
+let selectedPortfolioFiles = [];
+let editingExistingImages = [];
 let contractorsCache = [];
 let selectedContractor = null;
+const userDisplayNameCache = new Map();
+const contractorNameCache = new Map();
 
 let imageViewer = null;
 let imageViewerMain = null;
@@ -218,6 +228,21 @@ function setMessageModalOpen(isOpen) {
   }
 }
 
+function openContactModal(contractorId, servicio = "Servicio", contractorName = "") {
+  if (messageContractorId) messageContractorId.value = contractorId || "";
+  if (messageSubject) messageSubject.value = `Consulta sobre ${servicio}`;
+  if (messageBody) messageBody.value = "";
+  if (messageModal) {
+    const title = document.getElementById("messageModalTitle");
+    if (title) {
+      title.textContent = contractorName
+        ? `Contactar a ${contractorName}`
+        : "Contactar contratista";
+    }
+  }
+  setMessageModalOpen(true);
+}
+
 function setContractorDetailOpen(isOpen) {
   if (!contractorDetailModal) return;
   contractorDetailModal.hidden = !isOpen;
@@ -232,6 +257,50 @@ function setRequestMessage(text, isError = false) {
     notifyError(text);
   } else {
     notifyInfo(text);
+  }
+}
+
+function isPermissionDeniedError(error) {
+  const code = String(error?.code || "").toLowerCase();
+  const message = String(error?.message || "").toLowerCase();
+  return code.includes("permission-denied") || message.includes("insufficient permissions");
+}
+
+async function createContractorMessageCompatible(basePayload) {
+  const messagesRef = collection(db, "contractor_messages");
+
+  // Attempt modern payload first.
+  try {
+    return await addDoc(messagesRef, {
+      ...basePayload,
+      unreadByContractor: 1,
+      unreadByClient: 0,
+      lastMessageAt: serverTimestamp()
+    });
+  } catch (error) {
+    if (!isPermissionDeniedError(error)) {
+      throw error;
+    }
+  }
+
+  // Fallback for stricter legacy rules that only allow a minimal schema.
+  return addDoc(messagesRef, basePayload);
+}
+
+async function updateContractorMessageCompatible(messageId, preferredPayload, legacyPayload = {}) {
+  const refDoc = doc(db, "contractor_messages", messageId);
+
+  try {
+    await updateDoc(refDoc, preferredPayload);
+  } catch (error) {
+    if (!isPermissionDeniedError(error)) {
+      throw error;
+    }
+
+    await updateDoc(refDoc, {
+      ...legacyPayload,
+      updatedAt: serverTimestamp()
+    });
   }
 }
 
@@ -273,6 +342,72 @@ function normalizeUrl(url) {
   } catch (error) {
     return String(url || "").trim();
   }
+}
+
+function resolveImageUrl(item) {
+  if (!item) return "";
+  if (typeof item === "string") return normalizeUrl(item);
+  if (typeof item === "object") {
+    const candidate = item.downloadURL || item.url || item.src || "";
+    return normalizeUrl(candidate);
+  }
+  return "";
+}
+
+function normalizeImageList(images) {
+  return (Array.isArray(images) ? images : [])
+    .map((item) => resolveImageUrl(item))
+    .filter(Boolean);
+}
+
+function getFileKey(file) {
+  return `${file.name || "img"}-${file.size || 0}-${file.lastModified || 0}`;
+}
+
+function addPortfolioFiles(files = []) {
+  const merged = [...selectedPortfolioFiles];
+  const knownKeys = new Set(merged.map((file) => getFileKey(file)));
+
+  for (const file of Array.from(files || [])) {
+    if (!file || !file.type?.startsWith("image/")) continue;
+    const key = getFileKey(file);
+    if (knownKeys.has(key)) continue;
+    merged.push(file);
+    knownKeys.add(key);
+  }
+
+  selectedPortfolioFiles = merged;
+}
+
+function renderSelectedPortfolioPreview() {
+  if (!portfolioImagePreview) return;
+
+  const showExisting = editingPortfolioId && !portfolioReplaceImages?.checked;
+
+  const localPreview = selectedPortfolioFiles.map((file, index) => {
+    const kb = Math.max(1, Math.round(file.size / 1024));
+    return `
+      <div class="portfolio-upload-chip">
+        <span class="portfolio-upload-chip-name">${escapeHtml(file.name || `Imagen ${index + 1}`)}</span>
+        <span class="portfolio-upload-chip-size">${kb} KB</span>
+        <button class="btn secondary portfolio-remove-local-image-btn" type="button" data-local-index="${index}">Quitar</button>
+      </div>
+    `;
+  }).join("");
+
+  const existingPreview = showExisting ? editingExistingImages.map((url, index) => `
+    <div class="portfolio-upload-chip">
+      <img class="portfolio-upload-chip-thumb" src="${escapeHtml(url)}" alt="Imagen actual ${index + 1}" loading="lazy" />
+      <span class="portfolio-upload-chip-name">Imagen actual ${index + 1}</span>
+    </div>
+  `).join("") : "";
+
+  if (!localPreview && !existingPreview) {
+    portfolioImagePreview.innerHTML = "<p class=\"portfolio-upload-empty\">Aun no has seleccionado imagenes.</p>";
+    return;
+  }
+
+  portfolioImagePreview.innerHTML = `${existingPreview}${localPreview}`;
 }
 
 function renderImageViewer() {
@@ -333,9 +468,7 @@ function ensureImageViewer() {
 }
 
 function openImageViewer(images, startUrl, title) {
-  const normalized = (images || [])
-    .map((item) => normalizeUrl(item))
-    .filter(Boolean);
+  const normalized = normalizeImageList(images);
 
   if (!normalized.length) return;
 
@@ -354,49 +487,17 @@ function openImageViewer(images, startUrl, title) {
   setImageViewerOpen(true);
 }
 
-function parseImageUrls(rawText) {
-  const rawLines = String(rawText || "")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  function normalizeImageUrl(line) {
-    const parsed = new URL(line);
-
-    // Google Images result links are not direct images; use imgurl when present.
-    if (parsed.hostname.includes("google.") && parsed.pathname === "/imgres") {
-      const embeddedImageUrl = parsed.searchParams.get("imgurl");
-      if (embeddedImageUrl) {
-        return new URL(embeddedImageUrl).toString();
-      }
-    }
-
-    return parsed.toString();
-  }
-
-  const urls = [];
-  for (const line of rawLines) {
-    try {
-      const normalized = normalizeImageUrl(line);
-      const u = new URL(normalized);
-      if (!["http:", "https:"].includes(u.protocol)) {
-        throw new Error("URL no valida");
-      }
-      urls.push(u.toString());
-    } catch (error) {
-      throw new Error(`URL de imagen invalida: ${line}`);
-    }
-  }
-  return urls;
-}
-
 function resetPortfolioForm() {
   if (!portfolioForm) return;
   editingPortfolioId = null;
+  editingExistingImages = [];
+  selectedPortfolioFiles = [];
   portfolioForm.reset();
+  if (portfolioReplaceImages) portfolioReplaceImages.checked = false;
   if (portfolioSaveBtn) portfolioSaveBtn.textContent = "Guardar trabajo";
   if (portfolioCancelEditBtn) portfolioCancelEditBtn.hidden = true;
   if (portfolioModalTitle) portfolioModalTitle.textContent = "Nuevo trabajo";
+  renderSelectedPortfolioPreview();
 }
 
 function renderPortfolioJobs() {
@@ -412,7 +513,7 @@ function renderPortfolioJobs() {
       const safeTitle = escapeHtml(job.titulo || "Trabajo");
       const safeDate = escapeHtml(job.fechaTrabajo || "N/A");
       const safeDescription = escapeHtml(job.descripcion || "Sin descripcion");
-      const jobImages = Array.isArray(job.imagenes) ? job.imagenes.filter(Boolean) : [];
+      const jobImages = normalizeImageList(job.imagenes);
       const galleryPreview = jobImages.slice(0, 6).map((url, index) => {
         const safeUrl = escapeHtml(url);
         const alt = `${safeTitle} - imagen ${index + 1}`;
@@ -493,10 +594,13 @@ function startEditPortfolioJob(jobId) {
   if (!job || !portfolioForm) return;
 
   editingPortfolioId = job.id;
+  editingExistingImages = normalizeImageList(job.imagenes);
+  selectedPortfolioFiles = [];
   portfolioTitulo.value = job.titulo || "";
   portfolioFecha.value = job.fechaTrabajo || "";
   portfolioDescripcion.value = job.descripcion || "";
-  portfolioImagenes.value = Array.isArray(job.imagenes) ? job.imagenes.join("\n") : "";
+  if (portfolioReplaceImages) portfolioReplaceImages.checked = false;
+  renderSelectedPortfolioPreview();
   if (portfolioSaveBtn) portfolioSaveBtn.textContent = "Actualizar trabajo";
   if (portfolioCancelEditBtn) portfolioCancelEditBtn.hidden = false;
   if (portfolioModalTitle) portfolioModalTitle.textContent = "Editar trabajo";
@@ -618,7 +722,7 @@ async function renderContractorDetail(contractorId) {
 
   const jobsHtml = jobs.length
     ? jobs.map((job) => {
-      const images = Array.isArray(job.imagenes) ? job.imagenes.filter(Boolean) : [];
+      const images = normalizeImageList(job.imagenes);
       const preview = images.length
         ? `
           <div class="contractor-job-media-wrap">
@@ -672,55 +776,140 @@ async function loadRepliesForMessage(messageId) {
   return repliesSnap.docs.map((item) => ({ id: item.id, ...item.data() }));
 }
 
+async function getUserDisplayName(userId) {
+  if (!userId) return "Usuario";
+  if (userDisplayNameCache.has(userId)) {
+    return userDisplayNameCache.get(userId);
+  }
+
+  try {
+    const userSnap = await getDoc(doc(db, "users", userId));
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      const label = userData.nombre || userData.email || `Usuario ${userId.slice(0, 6)}`;
+      userDisplayNameCache.set(userId, label);
+      return label;
+    }
+  } catch (error) {
+    // sin bloqueo de flujo
+  }
+
+  const fallback = `Usuario ${userId.slice(0, 6)}`;
+  userDisplayNameCache.set(userId, fallback);
+  return fallback;
+}
+
+async function getContractorDisplayName(contractorId) {
+  if (!contractorId) return "Contratista";
+  if (contractorNameCache.has(contractorId)) {
+    return contractorNameCache.get(contractorId);
+  }
+
+  const inMemory = contractorsCache.find((item) => item.id === contractorId)?.nombreVisible;
+  if (inMemory) {
+    contractorNameCache.set(contractorId, inMemory);
+    return inMemory;
+  }
+
+  try {
+    const snap = await getDoc(doc(db, "contractors", contractorId));
+    if (snap.exists()) {
+      const label = snap.data().nombreVisible || `Contratista ${contractorId.slice(0, 6)}`;
+      contractorNameCache.set(contractorId, label);
+      return label;
+    }
+  } catch (error) {
+    // sin bloqueo de flujo
+  }
+
+  const fallback = `Contratista ${contractorId.slice(0, 6)}`;
+  contractorNameCache.set(contractorId, fallback);
+  return fallback;
+}
+
+function renderMessageTimeline(thread, replies) {
+  const timeline = [
+    {
+      senderRole: "cliente",
+      message: thread.message || "",
+      createdAt: thread.createdAt
+    },
+    ...(replies || [])
+  ];
+
+  return timeline.map((entry) => {
+    const role = entry.senderRole === "contratista" ? "contratista" : "cliente";
+    const whoLabel = role === "contratista" ? "Contratista" : "Cliente";
+    return `
+      <article class="chat-bubble ${role}">
+        <p class="chat-bubble-role">${whoLabel}</p>
+        <p class="chat-bubble-text">${escapeHtml(entry.message || "")}</p>
+        <p class="chat-bubble-time">${formatDate(entry.createdAt)}</p>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderStatusChip(status) {
+  const normalized = String(status || "nuevo").toLowerCase();
+  return `<span class="message-status-chip ${escapeHtml(normalized)}">${escapeHtml(normalized)}</span>`;
+}
+
+function renderUnreadBadge(count) {
+  const numeric = Number(count || 0);
+  if (!numeric) return "";
+  return `<span class="message-unread-badge">${numeric} nuevo${numeric > 1 ? "s" : ""}</span>`;
+}
+
 async function loadContractorInbox() {
   if (!contractorMessagesList || !currentUser || currentRole !== "contratista") return;
 
-  contractorMessagesList.innerHTML = "<p>Cargando mensajes...</p>";
+  contractorMessagesList.innerHTML = "<p>Cargando conversaciones...</p>";
   if (contractorMessagesNotice) {
     contractorMessagesNotice.hidden = false;
-    contractorMessagesNotice.textContent = "Solo tu, el cliente remitente y admin pueden ver este contenido.";
+    contractorMessagesNotice.textContent = "Solo tu, el cliente remitente y admin pueden ver estas conversaciones.";
   }
 
   try {
     const inboxQ = query(
       collection(db, "contractor_messages"),
       where("contractorId", "==", currentUser.uid),
-      orderBy("createdAt", "desc"),
+      orderBy("updatedAt", "desc"),
       limit(60)
     );
 
     const inboxSnap = await getDocs(inboxQ);
     if (inboxSnap.empty) {
-      contractorMessagesList.innerHTML = "<p>No tienes mensajes de clientes por ahora.</p>";
+      contractorMessagesList.innerHTML = "<p>No tienes conversaciones de clientes por ahora.</p>";
       return;
     }
 
     const rows = await Promise.all(inboxSnap.docs.map(async (msgDoc) => {
       const data = msgDoc.data();
       const replies = await loadRepliesForMessage(msgDoc.id);
-      const replyHtml = replies.length
-        ? replies.map((reply) => {
-          const who = reply.senderRole === "contratista" ? "Tu" : "Cliente";
-          return `
-            <p class="message-reply-row"><strong>${who}:</strong> ${escapeHtml(reply.message || "")}</p>
-          `;
-        }).join("")
-        : "<p class=\"message-reply-row\">Aun no hay respuestas.</p>";
+      const clientName = await getUserDisplayName(data.clientId);
+      const unreadBadge = renderUnreadBadge(data.unreadByContractor);
+      const timeline = renderMessageTimeline(data, replies);
 
       return `
-        <article class="card contractor-message-item" data-message-id="${msgDoc.id}">
-          <h3>Cliente: ${escapeHtml(data.clientId || "N/A")}</h3>
-          <p><strong>Asunto:</strong> ${escapeHtml(data.subject || "Sin asunto")}</p>
-          <p>${escapeHtml(data.message || "")}</p>
-          <p><strong>Estado:</strong> ${escapeHtml(data.status || "nuevo")}</p>
-          <p><strong>Recibido:</strong> ${formatDate(data.createdAt)}</p>
-          <div class="message-replies">${replyHtml}</div>
+        <article class="card conversation-thread" data-message-id="${msgDoc.id}">
+          <header class="conversation-thread-head">
+            <div>
+              <h3 class="conversation-thread-title">${escapeHtml(clientName)}</h3>
+              <p class="conversation-thread-subject">${escapeHtml(data.subject || "Sin asunto")}</p>
+            </div>
+            <div class="conversation-thread-meta">
+              ${renderStatusChip(data.status)}
+              ${unreadBadge}
+            </div>
+          </header>
+          <div class="chat-timeline">${timeline}</div>
           <form class="grid form-grid contractor-reply-form" data-message-id="${msgDoc.id}">
-            <textarea class="contractor-reply-input" rows="3" placeholder="Responder al cliente" required></textarea>
-            <button class="btn" type="submit">Responder</button>
+            <textarea class="contractor-reply-input" rows="3" placeholder="Escribe una respuesta clara para el cliente" required></textarea>
+            <button class="btn" type="submit">Responder cliente</button>
           </form>
-          <div class="inline-actions">
-            <button class="btn secondary mark-read-btn" type="button" data-mark-read-id="${msgDoc.id}">Marcar leido</button>
+          <div class="inline-actions conversation-thread-actions">
+            <button class="btn secondary mark-read-btn" type="button" data-mark-read-id="${msgDoc.id}">Marcar como leido</button>
             <button class="btn secondary close-thread-btn" type="button" data-close-id="${msgDoc.id}">Cerrar hilo</button>
           </div>
         </article>
@@ -730,6 +919,66 @@ async function loadContractorInbox() {
     contractorMessagesList.innerHTML = rows.join("");
   } catch (error) {
     contractorMessagesList.innerHTML = `<p>No se pudo cargar la bandeja: ${asMessage(error)}</p>`;
+  }
+}
+
+async function loadClientInbox() {
+  if (!clientMessagesList || !currentUser || !["cliente", "admin"].includes(currentRole)) return;
+
+  clientMessagesList.innerHTML = "<p>Cargando tus conversaciones...</p>";
+  if (clientMessagesNotice) {
+    clientMessagesNotice.hidden = false;
+    clientMessagesNotice.textContent = "Aqui puedes ver respuestas de contratistas y continuar la conversacion.";
+  }
+
+  try {
+    const inboxQ = query(
+      collection(db, "contractor_messages"),
+      where("clientId", "==", currentUser.uid),
+      orderBy("updatedAt", "desc"),
+      limit(60)
+    );
+
+    const inboxSnap = await getDocs(inboxQ);
+    if (inboxSnap.empty) {
+      clientMessagesList.innerHTML = "<p>Aun no tienes conversaciones. Usa el boton Contactar en un contratista.</p>";
+      return;
+    }
+
+    const rows = await Promise.all(inboxSnap.docs.map(async (msgDoc) => {
+      const data = msgDoc.data();
+      const replies = await loadRepliesForMessage(msgDoc.id);
+      const contractorName = await getContractorDisplayName(data.contractorId);
+      const unreadBadge = renderUnreadBadge(data.unreadByClient);
+      const timeline = renderMessageTimeline(data, replies);
+
+      return `
+        <article class="card conversation-thread" data-message-id="${msgDoc.id}">
+          <header class="conversation-thread-head">
+            <div>
+              <h3 class="conversation-thread-title">${escapeHtml(contractorName)}</h3>
+              <p class="conversation-thread-subject">${escapeHtml(data.subject || "Sin asunto")}</p>
+            </div>
+            <div class="conversation-thread-meta">
+              ${renderStatusChip(data.status)}
+              ${unreadBadge}
+            </div>
+          </header>
+          <div class="chat-timeline">${timeline}</div>
+          <form class="grid form-grid client-reply-form" data-message-id="${msgDoc.id}">
+            <textarea class="client-reply-input" rows="3" placeholder="Escribe tu seguimiento para el contratista" required></textarea>
+            <button class="btn" type="submit">Enviar mensaje</button>
+          </form>
+          <div class="inline-actions conversation-thread-actions">
+            <button class="btn secondary client-mark-read-btn" type="button" data-client-mark-read-id="${msgDoc.id}">Marcar respuestas como leidas</button>
+          </div>
+        </article>
+      `;
+    }));
+
+    clientMessagesList.innerHTML = rows.join("");
+  } catch (error) {
+    clientMessagesList.innerHTML = `<p>No se pudo cargar tu bandeja: ${asMessage(error)}</p>`;
   }
 }
 
@@ -897,15 +1146,24 @@ if (portfolioForm) {
     }
 
     try {
+      const replaceExisting = Boolean(portfolioReplaceImages?.checked);
+      const keepExisting = editingPortfolioId && !replaceExisting;
+      const baseImages = keepExisting ? [...editingExistingImages] : [];
+      const uploadedUrls = await uploadPortfolioImages(selectedPortfolioFiles);
+
       const payload = {
         titulo: portfolioTitulo.value.trim(),
         fechaTrabajo: portfolioFecha.value,
         descripcion: portfolioDescripcion.value.trim(),
-        imagenes: parseImageUrls(portfolioImagenes.value)
+        imagenes: [...baseImages, ...uploadedUrls]
       };
 
       if (!payload.titulo || !payload.fechaTrabajo || !payload.descripcion) {
         throw new Error("Completa titulo, fecha y descripcion.");
+      }
+
+      if (payload.imagenes.length > 20) {
+        throw new Error("El limite maximo por trabajo es de 20 imagenes.");
       }
 
       if (editingPortfolioId) {
@@ -922,6 +1180,47 @@ if (portfolioForm) {
     } catch (error) {
       setPortfolioMessage(asMessage(error), true);
     }
+  });
+
+  portfolioForm.addEventListener("paste", (event) => {
+    const clipboardItems = Array.from(event.clipboardData?.items || []);
+    const imageFiles = clipboardItems
+      .filter((item) => item.type?.startsWith("image/"))
+      .map((item) => item.getAsFile())
+      .filter(Boolean);
+
+    if (!imageFiles.length) return;
+
+    addPortfolioFiles(imageFiles);
+    renderSelectedPortfolioPreview();
+    setPortfolioMessage(`Se agregaron ${imageFiles.length} imagen(es) desde el portapapeles.`);
+    event.preventDefault();
+  });
+}
+
+if (portfolioImagenesArchivos) {
+  portfolioImagenesArchivos.addEventListener("change", (event) => {
+    addPortfolioFiles(event.target?.files || []);
+    renderSelectedPortfolioPreview();
+    setPortfolioMessage("Imagenes listas para subir.");
+    portfolioImagenesArchivos.value = "";
+  });
+}
+
+if (portfolioImagePreview) {
+  portfolioImagePreview.addEventListener("click", (event) => {
+    const removeBtn = event.target.closest(".portfolio-remove-local-image-btn");
+    if (!removeBtn) return;
+    const index = Number(removeBtn.dataset.localIndex);
+    if (!Number.isInteger(index) || index < 0) return;
+    selectedPortfolioFiles = selectedPortfolioFiles.filter((_, i) => i !== index);
+    renderSelectedPortfolioPreview();
+  });
+}
+
+if (portfolioReplaceImages) {
+  portfolioReplaceImages.addEventListener("change", () => {
+    renderSelectedPortfolioPreview();
   });
 }
 
@@ -974,7 +1273,7 @@ if (messageForm) {
     }
 
     try {
-      await addDoc(collection(db, "contractor_messages"), {
+      await createContractorMessageCompatible({
         contractorId,
         clientId: currentUser.uid,
         subject,
@@ -988,8 +1287,13 @@ if (messageForm) {
       if (messageContractorId) messageContractorId.value = contractorId;
       setMessageModalOpen(false);
       setRequestMessage("Mensaje enviado correctamente al contratista.");
+      await loadClientInbox();
     } catch (error) {
-      setRequestMessage(`No se pudo enviar el mensaje: ${asMessage(error)}`, true);
+      if (isPermissionDeniedError(error)) {
+        setRequestMessage("No tienes permisos para enviar mensajes con esta cuenta. Verifica que tu rol en users sea cliente o admin y que las reglas de Firestore permitan crear en contractor_messages.", true);
+      } else {
+        setRequestMessage(`No se pudo enviar el mensaje: ${asMessage(error)}`, true);
+      }
     }
   });
 }
@@ -1101,10 +1405,8 @@ if (listEl) {
 
       const contractorId = messageBtn.dataset.contractorId;
       const servicio = messageBtn.dataset.servicio || "Servicio";
-      if (messageContractorId) messageContractorId.value = contractorId;
-      if (messageSubject) messageSubject.value = `Consulta sobre ${servicio}`;
-      if (messageBody) messageBody.value = "";
-      setMessageModalOpen(true);
+      const contractorName = contractorsCache.find((item) => item.id === contractorId)?.nombreVisible || "";
+      openContactModal(contractorId, servicio, contractorName);
       return;
     }
 
@@ -1178,11 +1480,9 @@ if (contractorDetailContent) {
 
       const contractorId = contactBtn.dataset.detailContactId;
       const servicio = contactBtn.dataset.servicio || "Servicio";
-      if (messageContractorId) messageContractorId.value = contractorId;
-      if (messageSubject) messageSubject.value = `Consulta sobre ${servicio}`;
-      if (messageBody) messageBody.value = "";
+      const contractorName = selectedContractor?.nombreVisible || "";
       setContractorDetailOpen(false);
-      setMessageModalOpen(true);
+      openContactModal(contractorId, servicio, contractorName);
       return;
     }
 
@@ -1249,9 +1549,14 @@ if (contractorMessagesList) {
         createdAt: serverTimestamp()
       });
 
-      await updateDoc(doc(db, "contractor_messages", messageId), {
+      await updateContractorMessageCompatible(messageId, {
         status: "respondido",
+        unreadByContractor: 0,
+        unreadByClient: 1,
+        lastMessageAt: serverTimestamp(),
         updatedAt: serverTimestamp()
+      }, {
+        status: "respondido"
       });
 
       notifySuccess("Respuesta enviada al cliente.");
@@ -1266,9 +1571,12 @@ if (contractorMessagesList) {
     if (markReadBtn) {
       const messageId = markReadBtn.dataset.markReadId;
       try {
-        await updateDoc(doc(db, "contractor_messages", messageId), {
+        await updateContractorMessageCompatible(messageId, {
           status: "leido",
+          unreadByContractor: 0,
           updatedAt: serverTimestamp()
+        }, {
+          status: "leido"
         });
         notifySuccess("Mensaje marcado como leido.");
         await loadContractorInbox();
@@ -1295,8 +1603,79 @@ if (contractorMessagesList) {
   });
 }
 
+if (clientMessagesList) {
+  clientMessagesList.addEventListener("submit", async (event) => {
+    const formEl = event.target.closest(".client-reply-form");
+    if (!formEl) return;
+
+    event.preventDefault();
+
+    if (!currentUser || !["cliente", "admin"].includes(currentRole)) {
+      notifyError("Solo clientes autenticados pueden escribir en el hilo.");
+      return;
+    }
+
+    const messageId = formEl.dataset.messageId;
+    const input = formEl.querySelector(".client-reply-input");
+    const text = (input?.value || "").trim();
+
+    if (!text) {
+      notifyError("Escribe un mensaje antes de enviar.");
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, "contractor_messages", messageId, "replies"), {
+        senderId: currentUser.uid,
+        senderRole: "cliente",
+        message: text,
+        createdAt: serverTimestamp()
+      });
+
+      await updateContractorMessageCompatible(messageId, {
+        status: "nuevo",
+        unreadByContractor: 1,
+        unreadByClient: 0,
+        lastMessageAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, {
+        status: "nuevo"
+      });
+
+      notifySuccess("Mensaje enviado al contratista.");
+      await loadClientInbox();
+    } catch (error) {
+      notifyError(`No se pudo enviar tu mensaje: ${asMessage(error)}`);
+    }
+  });
+
+  clientMessagesList.addEventListener("click", async (event) => {
+    const markReadBtn = event.target.closest(".client-mark-read-btn");
+    if (!markReadBtn) return;
+
+    const messageId = markReadBtn.dataset.clientMarkReadId;
+    try {
+      await updateContractorMessageCompatible(messageId, {
+        unreadByClient: 0,
+        status: "leido",
+        updatedAt: serverTimestamp()
+      }, {
+        status: "leido"
+      });
+      notifySuccess("Conversacion marcada como leida.");
+      await loadClientInbox();
+    } catch (error) {
+      notifyError(`No se pudo actualizar el hilo: ${asMessage(error)}`);
+    }
+  });
+}
+
 if (listEl) {
   loadContractors();
+}
+
+if (portfolioImagePreview) {
+  renderSelectedPortfolioPreview();
 }
 
 onAuthStateChanged(auth, async (user) => {
@@ -1307,6 +1686,9 @@ onAuthStateChanged(auth, async (user) => {
 
   if (contractorMessagesSection) {
     contractorMessagesSection.hidden = currentRole !== "contratista";
+  }
+  if (clientMessagesSection) {
+    clientMessagesSection.hidden = !["cliente", "admin"].includes(currentRole);
   }
 
   if (user) {
@@ -1335,6 +1717,8 @@ onAuthStateChanged(auth, async (user) => {
     if (openPortfolioModalBtn) openPortfolioModalBtn.disabled = false;
     await loadPortfolioJobs();
     await loadContractorInbox();
+  } else if (user && ["cliente", "admin"].includes(currentRole)) {
+    await loadClientInbox();
   } else if (portfolioList) {
     if (openPortfolioModalBtn) openPortfolioModalBtn.disabled = true;
     setPortfolioModalOpen(false);
@@ -1343,5 +1727,8 @@ onAuthStateChanged(auth, async (user) => {
 
   if (contractorMessagesList && currentRole !== "contratista") {
     contractorMessagesList.innerHTML = "";
+  }
+  if (clientMessagesList && !["cliente", "admin"].includes(currentRole)) {
+    clientMessagesList.innerHTML = "";
   }
 });

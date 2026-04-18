@@ -10,7 +10,60 @@ import {
   updateDoc,
   where
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-import { auth, db } from "./firebase-config.js";
+import {
+  getDownloadURL,
+  ref,
+  uploadBytes
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
+import { auth, db, storage } from "./firebase-config.js";
+
+const MB = 1024 * 1024;
+const MAX_IMAGE_SIZE_BYTES = 8 * MB;
+
+function sanitizeFileName(name) {
+  return String(name || "imagen")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80) || "imagen";
+}
+
+export async function uploadPortfolioImages(files = []) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Usuario no autenticado.");
+
+  const validFiles = Array.from(files || []).filter(Boolean);
+  if (!validFiles.length) return [];
+
+  const uploadedUrls = [];
+
+  for (const file of validFiles) {
+    if (!file.type || !file.type.startsWith("image/")) {
+      throw new Error(`Archivo invalido (${file.name || "sin nombre"}). Solo se permiten imagenes.`);
+    }
+
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      throw new Error(`La imagen ${file.name || "seleccionada"} supera el limite de 8 MB.`);
+    }
+
+    const safeFileName = sanitizeFileName(file.name || `imagen-${Date.now()}.jpg`);
+    const uniqueId = crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const path = `portfolio_jobs/${user.uid}/${Date.now()}-${uniqueId}-${safeFileName}`;
+    const fileRef = ref(storage, path);
+
+    await uploadBytes(fileRef, file, {
+      contentType: file.type,
+      customMetadata: {
+        contractorId: user.uid
+      }
+    });
+
+    uploadedUrls.push(await getDownloadURL(fileRef));
+  }
+
+  return uploadedUrls;
+}
 
 export async function createPortfolioJob(payload) {
   const user = auth.currentUser;
